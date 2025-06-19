@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  color: #374151;
+  font-family: "Inter", sans-serif;
+}
+
+input,
+textarea {
+  outline: none;
+}
+
+.markdown {
+  line-height: 1.75;
+
+  a {
+    color: blue;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  h1 {
+    @apply text-2xl font-bold;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    @apply text-xl font-bold;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    @apply text-lg font-bold;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h4 {
+    @apply text-base font-bold;
+    margin-bottom: 0.5rem;
+  }
+
+  h5 {
+    @apply text-sm font-bold;
+  }
+
+  h6 {
+    @apply text-xs font-bold;
+  }
+
+  ul {
+    @apply list-disc pl-4;
+  }
+
+  ol {
+    @apply list-decimal pl-4;
+  }
+
+  /* Table styles for markdown */
+  .table-container {
+    overflow-x: auto;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    min-width: 600px;
+  }
+
+  th,
+  td {
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    position: sticky;
+    top: 0;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+
+  tr:hover {
+    background-color: #f3f4f6;
+  }
+
+  td {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 处理长文本内容 */
+  .markdown pre {
+    @apply bg-gray-100 p-4 rounded border overflow-x-auto text-sm;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .markdown code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-sm;
+  }
+}

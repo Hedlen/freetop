@@ -1,0 +1,59 @@
+event: start_of_agent
+data: {"agent_name": "coordinator", "agent_id": "8ea86b1a-cc09-4073-b6c3-d091fb14195f_coordinator_1"}
+
+event: start_of_llm
+data: {"agent_name": "coordinator"}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "man"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "us"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "，很"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "高"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "兴"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "见"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "到"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "你"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "。"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "有什么"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "我"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "可以"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "帮"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "忙"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "的吗"}}
+
+event: message
+data: {"message_id": "run-65d45e62-bfa0-49cd-99b1-ecf9ef4f827f", "delta": {"content": "？"}}
+
+event: end_of_llm
+data: {"agent_name": "coordinator"}
+
+event: end_of_agent
+data: {"agent_name": "coordinator", "agent_id": "8ea86b1a-cc09-4073-b6c3-d091fb14195f_coordinator_1"}
