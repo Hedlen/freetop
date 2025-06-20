@@ -1,12 +1,12 @@
-# LangManus Web UI
+# FreeTop Web UI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Come From Open Source, Back to Open Source
 
-**The default Web UI for [LangManus](https://github.com/langmanus/langmanus).**
+**The default Web UI for [FreeTop](https://github.com/Hedlen/freetop).**
 
-LangManus is a community-driven AI automation framework that builds upon the incredible work of the open source community. Our goal is to combine language models with specialized tools for tasks like web search, crawling, and Python code execution, while giving back to the community that made this possible.
+FreeTop is a community-driven AI automation framework that builds upon the incredible work of the open source community. Our goal is to combine language models with specialized tools for tasks like web search, crawling, and Python code execution, while giving back to the community that made this possible.
 
 ## Demo Video
 
@@ -14,24 +14,31 @@ LangManus is a community-driven AI automation framework that builds upon the inc
 - [Download Video](https://github.com/langmanus/langmanus/blob/main/assets/demo.mp4)
 
 ## Table of Contents
-- [Quick Start](#quick-start)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+- [FreeTop Web UI](#freetop-web-ui)
+  - [Demo Video](#demo-video)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+    - [Prerequisites](#prerequisites)
+    - [Configuration](#configuration)
+    - [Installation](#installation)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
 
 ## Quick Start
 
 ### Prerequisites
 
-- [LangManus](https://github.com/langmanus/langmanus)
+- [FreeTop](https://github.com/Hedlen/freetop)
 - Node.js (v22.14.0+)
 - pnpm (v10.6.2+) as package manager
+- Chrome (v114.0.5735.199)
 
 ### Configuration
 
 Create a `.env` file in the project root and configure the following environment variables:
 
-- `NEXT_PUBLIC_API_URL`: The URL of the LangManus API.
+- `NEXT_PUBLIC_API_URL`: The URL of the FreeTop API.
 
 It's always a good idea to start with the given example file, and edit the `.env` file with your own values:
 

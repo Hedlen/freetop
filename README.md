@@ -1,4 +1,4 @@
-# 🦜🤖 LangManus
+# 🦜🤖 FreeTop
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,13 +9,13 @@
 
 > Come From Open Source, Back to Open Source
 
-LangManus is a community-driven AI automation framework that builds upon the incredible work of the open source community. Our goal is to combine language models with specialized tools for tasks like web search, crawling, and Python code execution, while giving back to the community that made this possible.
+FreeTop is a community-driven AI automation framework that builds upon the incredible work of the open source community. Our goal is to combine language models with specialized tools for tasks like web search, crawling, and Python code execution, while giving back to the community that made this possible.
 
 ## Demo
 
 **Task**: Calculate the influence index of DeepSeek R1 on HuggingFace. This index can be designed using a weighted sum of factors such as followers, downloads, and likes.
 
-**LangManus's Fully Automated Plan and Solution**:
+**FreeTop's Fully Automated Plan and Solution**:
 1. Gather the latest information about "DeepSeek R1", "HuggingFace", and related topics through online searches.
 2. Interact with a Chromium instance to visit the HuggingFace official website, search for "DeepSeek R1" and retrieve the latest data, including followers, likes, downloads, and other relevant metrics.
 3. Find formulas for calculating model influence using search engines and web scraping.
@@ -28,30 +28,49 @@ LangManus is a community-driven AI automation framework that builds upon the inc
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-- [Project Statement](#project-statement)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Why LangManus?](#why-langmanus)
-- [Setup](#setup)
+- [🦜🤖 FreeTop](#-freetop)
+  - [Demo](#demo)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+  - [Project Statement](#project-statement)
+  - [项目声明](#项目声明)
+  - [Architecture](#architecture)
+  - [Features](#features)
+    - [Core Capabilities](#core-capabilities)
+    - [Tools and Integrations](#tools-and-integrations)
+    - [Development Features](#development-features)
+    - [Workflow Management](#workflow-management)
+  - [Why FreeTop?](#why-freetop)
+  - [Setup](#setup)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
     - [Configuration](#configuration)
-- [Usage](#usage)
-- [Docker](#docker)
-- [Web UI](#web-ui)
-- [Development](#development)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+    - [Configure Pre-commit Hook](#configure-pre-commit-hook)
+  - [Usage](#usage)
+    - [Basic Execution](#basic-execution)
+    - [API Server](#api-server)
+    - [Advanced Configuration](#advanced-configuration)
+    - [Agent Prompts System](#agent-prompts-system)
+      - [Core Agent Roles](#core-agent-roles)
+      - [Prompt System Architecture](#prompt-system-architecture)
+  - [Docker](#docker)
+  - [Web UI](#web-ui)
+  - [Docker Compose (include both backend and frontend)](#docker-compose-include-both-backend-and-frontend)
+  - [Development](#development)
+    - [Testing](#testing)
+    - [Code Quality](#code-quality)
+  - [FAQ](#faq)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Star History](#star-history)
+  - [Acknowledgments](#acknowledgments)
 
 ## Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/langmanus/langmanus.git
-cd langmanus
+git clone https://github.com/Hedlen/freetop.git
+cd freetop
 
 # Install dependencies, uv will take care of the python interpreter and venv creation
 uv sync
@@ -92,9 +111,11 @@ This is an academically driven open-source project, developed by a group of form
 
 ## Architecture
 
-LangManus implements a hierarchical multi-agent system where a supervisor coordinates specialized agents to accomplish complex tasks:
+FreeTop implements a hierarchical multi-agent system where a supervisor coordinates specialized agents to accomplish complex tasks:
 
-![LangManus Architecture](./assets/architecture.png)
+
+![FreeTop Architecture](./assets/architecture.png)
+
 
 The system consists of the following agents working together:
 
@@ -137,7 +158,7 @@ The system consists of the following agents working together:
     - Multi-agent orchestration
     - Task delegation and monitoring
 
-## Why LangManus?
+## Why FreeTop?
 
 We believe in the power of open source collaboration. This project wouldn't be possible without the amazing work of projects like:
 

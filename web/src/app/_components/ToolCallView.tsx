@@ -7,7 +7,7 @@ import {
 import { LRUCache } from "lru-cache";
 import { useMemo } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
-import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import docco from "react-syntax-highlighter/dist/styles/docco";
 
 import { type ToolCallTask } from "~/core/workflow";
 
