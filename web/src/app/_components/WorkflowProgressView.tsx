@@ -27,41 +27,46 @@ export function WorkflowProgressView({
     return workflow.steps.find((step) => step.agentName === "reporter");
   }, [workflow]);
   return (
-    <div className="flex flex-col gap-4">
-      <div className={cn("flex overflow-hidden rounded-2xl border", className)}>
-        <aside className="flex w-[220px] flex-shrink-0 flex-col border-r bg-[rgba(0,0,0,0.02)]">
-          <div className="flex-shrink-0 px-4 py-4 font-medium">Flow</div>
-          <ol className="flex flex-grow list-disc flex-col gap-4 px-4 py-2">
-            {steps.map((step) => (
+    <div className="flex flex-col gap-6">
+      <div className={cn("grid grid-cols-[220px_1fr] overflow-hidden rounded-2xl border min-h-[500px]", className)}>
+        <aside className="flex flex-col border-r bg-[rgba(0,0,0,0.02)] sticky top-0 h-fit max-h-[500px]">
+          <div className="flex-shrink-0 px-4 py-4 font-medium border-b bg-white/50">Flow</div>
+          <ol className="flex flex-col gap-3 px-4 py-4 overflow-y-auto">
+            {steps.map((step, index) => (
               <li
                 key={step.id}
-                className="flex cursor-pointer items-center gap-2"
+                className="flex cursor-pointer items-center gap-3 p-2 rounded-lg hover:bg-white/60 transition-colors"
                 onClick={() => {
                   if (typeof document !== 'undefined') {
                     const element = document.getElementById(step.id);
                     if (element) {
                       element.scrollIntoView({
                         behavior: "smooth",
-                        block: "center",
+                        block: "start",
                       });
                     }
                   }
                 }}
               >
-                <div className="flex h-2 w-2 rounded-full bg-gray-400"></div>
-                <div>{getStepName(step)}</div>
+                <div className="flex h-3 w-3 rounded-full bg-blue-400 flex-shrink-0"></div>
+                <div className="text-sm font-medium">{index + 1}. {getStepName(step)}</div>
               </li>
             ))}
           </ol>
         </aside>
-        <main className="flex-grow overflow-auto bg-white p-4">
-          <ul className="flex flex-col gap-4">
+        <main className="overflow-auto bg-white p-6">
+          <div className="max-w-4xl">
             {steps.map((step, stepIndex) => (
-              <li key={step.id} className="flex flex-col gap-2">
-                <h3 id={step.id} className="ml-[-4px] text-lg font-bold">
-                  📍 Step {stepIndex + 1}: {getStepName(step)}
-                </h3>
-                <ul className="flex flex-col gap-2">
+              <div key={step.id} className="mb-8">
+                <div id={step.id} className="mb-6">
+                  <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-3">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold">
+                      {stepIndex + 1}
+                    </span>
+                    {getStepName(step)}
+                  </h3>
+                </div>
+                <div className="ml-11 space-y-4">
                   {step.tasks
                     .filter(
                       (task) =>
@@ -76,36 +81,49 @@ export function WorkflowProgressView({
                       step.agentName === "planner" ? (
                         <PlanTaskView key={task.id} task={task} />
                       ) : (
-                        <li key={task.id} className="flex">
+                        <div key={task.id} className="">
                           {task.type === "thinking" ? (
-                            <Markdown
-                              className="pl-6 opacity-70"
-                              style={{
-                                fontSize: "smaller",
-                              }}
-                            >
-                              {task.payload.text}
-                            </Markdown>
+                            <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-gray-300">
+                              <Markdown
+                                className="text-gray-600 text-sm"
+                              >
+                                {task.payload.text}
+                              </Markdown>
+                            </div>
                           ) : (
                             <ToolCallView task={task} />
                           )}
-                        </li>
+                        </div>
                       ),
                     )}
-                </ul>
-                {stepIndex < steps.length - 1 && <hr className="mb-4 mt-8" />}
-              </li>
+                </div>
+                {stepIndex < steps.length - 1 && (
+                  <div className="mt-8 mb-8">
+                    <hr className="border-gray-200" />
+                  </div>
+                )}
+              </div>
             ))}
-          </ul>
+          </div>
         </main>
       </div>
       {reportStep && (
-        <div className="flex flex-col gap-4 p-4">
-          <Markdown>
-            {reportStep.tasks[0]?.type === "thinking"
-              ? reportStep.tasks[0].payload.text
-              : ""}
-          </Markdown>
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200 p-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-3">
+               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white text-sm font-bold">
+                 ✓
+               </span>
+               Report
+             </h2>
+          </div>
+          <div className="bg-white rounded-lg p-6 shadow-sm">
+            <Markdown className="prose prose-sm max-w-none">
+              {reportStep.tasks[0]?.type === "thinking"
+                ? reportStep.tasks[0].payload.text
+                : ""}
+            </Markdown>
+          </div>
         </div>
       )}
     </div>
@@ -132,38 +150,38 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
     }
     return {};
   }, [task]);
-  const [showReason, setShowReason] = useState(true);
+  const [showReason, setShowReason] = useState(false);
   const reason = task.payload.reason;
   const markdown = `## ${plan.title ?? ""}\n\n${plan.steps?.map((step) => `- **${step.title ?? ""}**\n\n${step.description ?? ""}`).join("\n\n") ?? ""}`;
   return (
-    <li key={task.id} className="flex flex-col">
+    <div key={task.id} className="space-y-4">
       {reason && (
-        <div>
-          <div>
-            <button
-              className="mb-1 flex h-8 items-center gap-2 rounded-2xl border bg-button px-4 text-sm text-button hover:bg-button-hover hover:text-button-hover"
-              onClick={() => setShowReason(!showReason)}
-            >
-              <Atom className="h-4 w-4" />
-              <span>Deep Thought</span>
-              {showReason ? (
-                <UpOutlined className="text-xs" />
-              ) : (
-                <DownOutlined className="text-xs" />
-              )}
-            </button>
-          </div>
-          <div className={cn(showReason ? "block" : "hidden")}>
-            <Markdown className="border-l-2 pl-6 text-sm opacity-70">
-              {reason}
-            </Markdown>
-          </div>
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <button
+            className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500 hover:bg-blue-600 px-3 py-1.5 text-xs text-white font-medium transition-colors"
+            onClick={() => setShowReason(!showReason)}
+          >
+            <Atom className="h-3 w-3" />
+            <span>Deep Thought</span>
+            {showReason ? (
+              <UpOutlined className="text-xs" />
+            ) : (
+              <DownOutlined className="text-xs" />
+            )}
+          </button>
+          {showReason && (
+            <div className="bg-white rounded-md p-3 border-l-4 border-blue-400">
+              <Markdown className="text-gray-600 text-xs leading-relaxed prose-xs">
+                {reason}
+              </Markdown>
+            </div>
+          )}
         </div>
       )}
-      <div>
-        <Markdown className="pl-6">{markdown ?? ""}</Markdown>
+      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+        <Markdown className="prose prose-sm max-w-none">{markdown ?? ""}</Markdown>
       </div>
-    </li>
+    </div>
   );
 }
 

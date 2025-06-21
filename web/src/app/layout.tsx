@@ -15,7 +15,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${GeistSans.variable}`}>
-      <body className="min-w-screen flex min-h-screen bg-body" suppressHydrationWarning>{children}</body>
+      <body className="min-w-screen flex min-h-screen bg-sky-gradient relative" suppressHydrationWarning>
+        <div className="absolute inset-0 bg-mountain-overlay"></div>
+        <div className="relative z-10 w-full">{children}</div>
+      </body>
     </html>
   );
 }

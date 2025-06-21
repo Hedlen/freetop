@@ -92,6 +92,7 @@ export async function sendMessage(
           textMessage = null;
           break;
         case "start_of_workflow":
+          console.log("Received start_of_workflow event:", event);
           const workflowEngine = new WorkflowEngine();
           const workflow = workflowEngine.start(event);
           const workflowMessage: WorkflowMessage = {
@@ -100,6 +101,7 @@ export async function sendMessage(
             type: "workflow",
             content: { workflow: workflow },
           };
+          console.log("Created workflow message:", workflowMessage);
           addMessage(workflowMessage);
           for await (const updatedWorkflow of workflowEngine.run(stream)) {
             updateMessage({

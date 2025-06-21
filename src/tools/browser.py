@@ -91,6 +91,8 @@ class BrowserTool(BaseTool):
                 loop.close()
         except Exception as e:
             return f"Error executing browser task: {str(e)}"
+        finally:
+            self._agent = None
 
     async def terminate(self):
         """Terminate the browser agent if it exists."""
@@ -124,12 +126,10 @@ class BrowserTool(BaseTool):
                 )
         except Exception as e:
             return f"Error executing browser task: {str(e)}"
-        finally:
-            await self.terminate()
 
 
 BrowserTool = create_logged_tool(BrowserTool)
 browser_tool = BrowserTool()
 
 if __name__ == "__main__":
-    browser_tool._run(instruction="go to github.com and search langmanus")
+    browser_tool._run(instruction="go to github.com and search FreeTop")

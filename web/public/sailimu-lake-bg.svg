@@ -1,0 +1,47 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 天空渐变 -->
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#B0E0E6;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#E0F6FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F0F8FF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="mountainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4682B4;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#5F9EA0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#708090;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="lakeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4169E1;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#1E90FF;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#0066CC;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 天空背景 -->
+  <rect width="1920" height="1080" fill="url(#skyGradient)"/>
+  
+  <!-- 远山 -->
+  <path d="M0 400 Q480 300 960 350 Q1440 400 1920 320 L1920 1080 L0 1080 Z" fill="url(#mountainGradient)" opacity="0.6"/>
+  
+  <!-- 中山 -->
+  <path d="M0 500 Q320 420 640 450 Q960 480 1280 440 Q1600 400 1920 460 L1920 1080 L0 1080 Z" fill="url(#mountainGradient)" opacity="0.8"/>
+  
+  <!-- 湖水 -->
+  <ellipse cx="960" cy="750" rx="800" ry="200" fill="url(#lakeGradient)"/>
+  
+  <!-- 湖水反光 -->
+  <ellipse cx="960" cy="750" rx="600" ry="120" fill="#87CEEB" opacity="0.3"/>
+  
+  <!-- 云朵 -->
+  <ellipse cx="300" cy="200" rx="80" ry="40" fill="white" opacity="0.7"/>
+  <ellipse cx="320" cy="190" rx="60" ry="30" fill="white" opacity="0.7"/>
+  <ellipse cx="340" cy="200" rx="50" ry="25" fill="white" opacity="0.7"/>
+  
+  <ellipse cx="1400" cy="150" rx="100" ry="50" fill="white" opacity="0.6"/>
+  <ellipse cx="1430" cy="140" rx="70" ry="35" fill="white" opacity="0.6"/>
+  
+  <!-- 前景草地 -->
+  <path d="M0 900 Q480 880 960 900 Q1440 920 1920 900 L1920 1080 L0 1080 Z" fill="#90EE90" opacity="0.4"/>
+</svg>

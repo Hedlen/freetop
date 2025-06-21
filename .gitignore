@@ -18,4 +18,7 @@ static/browser_history/*.gif
 # user conf
 conf.yaml
 
+# Node.js modules
+node_modules/
+
 .idea/

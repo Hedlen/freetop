@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="LangManus API",
-    description="API for LangManus LangGraph-based agent workflow",
+    title="FreeTop API",
+    description="API for FreeTop LangGraph-based agent workflow",
     version="0.1.0",
 )
 
