@@ -6,10 +6,11 @@ import { cn } from '~/core/utils';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (username: string, password: string) => boolean;
+  onLogin?: (username: string, password: string) => boolean;
+  onLoginSuccess?: (userData: any) => void;
 }
 
-export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginModalProps) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,9 +32,34 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
           return;
         }
         
-        const success = onLogin(username, password);
-        if (!success) {
-          setError('用户名或密码错误');
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username,
+            password,
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // 保存token到localStorage
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('user_info', JSON.stringify(result.user));
+          
+          // 调用父组件的登录回调
+          if (onLogin) {
+            onLogin(username, password);
+          }
+          if (onLoginSuccess) {
+            onLoginSuccess(result.user);
+          }
+          onClose();
+        } else {
+          setError(result.message || '登录失败');
         }
       } else {
         // 注册逻辑
@@ -52,15 +78,39 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
           return;
         }
         
-        // 模拟注册成功，直接登录
-        const success = onLogin(username, password);
-        if (success) {
-          // 注册成功提示
-          alert('注册成功！');
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username,
+            email,
+            password,
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // 注册成功，自动登录
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('user_info', JSON.stringify(result.user));
+          
+          // 调用父组件的登录回调
+          if (onLogin) {
+            onLogin(username, password);
+          }
+          if (onLoginSuccess) {
+            onLoginSuccess(result.user);
+          }
+          onClose();
+        } else {
+          setError(result.message || '注册失败');
         }
       }
     } catch (err) {
-      setError('操作失败，请重试');
+      setError('网络错误，请重试');
     } finally {
       setLoading(false);
     }
@@ -82,7 +132,7 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* 背景遮罩 */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -90,24 +140,24 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
       />
       
       {/* 模态框内容 */}
-      <div className="relative w-full max-w-md mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+      <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
         {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20">
-          <h2 className="text-xl font-semibold text-white">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">
             {isLoginMode ? '登录' : '注册'}
           </h2>
           <button
             onClick={onClose}
             className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         
         {/* 表单内容 */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           <div className="space-y-4">
             {/* 用户名 */}
             <div>

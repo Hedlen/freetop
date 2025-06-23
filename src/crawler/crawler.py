@@ -1,28 +1,33 @@
 import sys
+import logging
+from typing import Optional, Dict, Any
 
 from .article import Article
 from .jina_client import JinaClient
 from .readability_extractor import ReadabilityExtractor
 
+logger = logging.getLogger(__name__)
+
 
 class Crawler:
-    def crawl(self, url: str) -> Article:
-        # To help LLMs better understand content, we extract clean
-        # articles from HTML, convert them to markdown, and split
-        # them into text and image blocks for one single and unified
-        # LLM message.
-        #
-        # Jina is not the best crawler on readability, however it's
-        # much easier and free to use.
-        #
-        # Instead of using Jina's own markdown converter, we'll use
-        # our own solution to get better readability results.
-        jina_client = JinaClient()
-        html = jina_client.crawl(url, return_format="html")
-        extractor = ReadabilityExtractor()
-        article = extractor.extract_article(html)
-        article.url = url
-        return article
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self.jina_client = JinaClient(self.config)
+        self.readability_extractor = ReadabilityExtractor()
+
+    def crawl(self, url: str) -> Optional[Article]:
+        """Crawl a URL and return an Article object."""
+        try:
+            html_content = self.jina_client.get_html(url)
+            if html_content:
+                article = self.readability_extractor.extract(html_content, url)
+                return article
+            else:
+                logger.error(f"Failed to get HTML content for URL: {url}")
+                return None
+        except Exception as e:
+            logger.error(f"Error crawling URL {url}: {e}")
+            return None
 
 
 if __name__ == "__main__":

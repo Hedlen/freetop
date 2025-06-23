@@ -15,7 +15,7 @@ from src.llms.llm import get_llm_by_type
 from src.config import TEAM_MEMBERS
 from src.config.agents import AGENT_LLM_MAP
 from src.prompts.template import apply_prompt_template
-from src.tools.search import tavily_tool
+from src.tools.search import search
 from src.utils.json_utils import repair_json_output
 from .types import State, Router
 
@@ -126,7 +126,9 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     if state.get("search_before_planning"):
-        searched_content = tavily_tool.invoke({"query": state["messages"][-1].content})
+        # 从state中获取user_id，如果没有则为None
+        user_id = state.get("user_id")
+        searched_content = search.invoke({"query": state["messages"][-1].content, "user_id": user_id})
         if isinstance(searched_content, list):
             messages = deepcopy(messages)
             messages[

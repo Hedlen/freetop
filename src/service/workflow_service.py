@@ -38,6 +38,8 @@ async def run_agent_workflow(
     deep_thinking_mode: Optional[bool] = False,
     search_before_planning: Optional[bool] = False,
     team_members: Optional[list] = None,
+    abort_event: Optional[asyncio.Event] = None,
+    user_id: Optional[int] = None,
 ):
     """Run the agent workflow to process and respond to user input messages.
 
@@ -54,6 +56,7 @@ async def run_agent_workflow(
             the execution plan
         team_members: Optional list of specific team members to involve in the workflow.
             If None, uses default TEAM_MEMBERS configuration
+        abort_event: Optional asyncio.Event that can be set to abort the workflow
 
     Returns:
         Yields various event dictionaries containing workflow state and progress information,
@@ -80,7 +83,17 @@ async def run_agent_workflow(
     # Reset coordinator cache at the start of each workflow
     global current_browser_tool
     coordinator_cache = []
-    current_browser_tool = browser_tool
+    
+    # Create browser tool with user-specific configuration
+    if user_id:
+        from src.tools.browser import create_browser_config, BrowserTool
+        from src.tools.browser import Browser
+        user_browser_config = create_browser_config(user_id)
+        user_browser = Browser(config=user_browser_config)
+        current_browser_tool = BrowserTool()
+        current_browser_tool.browser = user_browser
+    else:
+        current_browser_tool = browser_tool
     is_handoff_case = False
     is_workflow_triggered = False
 
@@ -94,9 +107,16 @@ async def run_agent_workflow(
                 "messages": user_input_messages,
                 "deep_thinking_mode": deep_thinking_mode,
                 "search_before_planning": search_before_planning,
+                "user_id": user_id,
             },
             version="v2",
         ):
+            # Check for abort signal
+            if abort_event and abort_event.is_set():
+                logger.info("Abort signal received, terminating workflow")
+                if current_browser_tool:
+                    await current_browser_tool.terminate()
+                raise asyncio.CancelledError("Workflow aborted by user request")
             kind = event.get("event")
             data = event.get("data")
             name = event.get("name")
@@ -218,7 +238,8 @@ async def run_agent_workflow(
                         "tool_call_id": f"{workflow_id}_{node}_{name}_{run_id}",
                         "tool_name": name,
                         "tool_result": (
-                            data["output"].content if data.get("output") else ""
+                            data["output"].content if data.get("output") and hasattr(data["output"], "content") 
+                            else str(data["output"]) if data.get("output") else ""
                         ),
                     },
                 }
@@ -228,8 +249,22 @@ async def run_agent_workflow(
     except asyncio.CancelledError:
         logger.info("Workflow cancelled, terminating browser agent if exists")
         if current_browser_tool:
-            await current_browser_tool.terminate()
+            try:
+                await current_browser_tool.terminate()
+            except Exception as terminate_error:
+                logger.warning(f"终止浏览器工具时出现警告: {terminate_error}")
         raise
+    finally:
+        # 确保在工作流结束时清理浏览器实例
+        if current_browser_tool:
+            try:
+                # 调用terminate方法进行完整清理
+                await current_browser_tool.terminate()
+                logger.info("浏览器工具已完全清理")
+            except Exception as cleanup_error:
+                logger.warning(f"清理浏览器工具时出现警告: {cleanup_error}")
+            finally:
+                current_browser_tool = None
 
     if is_workflow_triggered:
         # TODO: remove messages attributes after Frontend being compatible with final_session_state event.

@@ -3,7 +3,7 @@ import { type StreamEvent } from "./StreamEvent";
 export async function* fetchStream<T extends StreamEvent>(
   url: string,
   init: RequestInit,
-): AsyncIterable<T> {
+): AsyncIterable<T & { taskId?: string }> {
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -22,25 +22,41 @@ export async function* fetchStream<T extends StreamEvent>(
   if (!reader) {
     throw new Error("Response body is not readable");
   }
+  
   let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    buffer += value;
+  let taskId: string | undefined;
+  
+  try {
     while (true) {
-      const index = buffer.indexOf("\n\n");
-      if (index === -1) {
+      const { done, value } = await reader.read();
+      if (done) {
         break;
       }
-      const chunk = buffer.slice(0, index);
-      buffer = buffer.slice(index + 2);
-      const event = parseEvent<T>(chunk);
-      if (event) {
-        yield event;
+      buffer += value;
+      while (true) {
+        const index = buffer.indexOf("\n\n");
+        if (index === -1) {
+          break;
+        }
+        const chunk = buffer.slice(0, index);
+        buffer = buffer.slice(index + 2);
+        const event = parseEvent<T>(chunk);
+        if (event) {
+          // Handle task_started event to capture task ID
+          if (event.type === "task_started" && event.data && typeof event.data === "object" && "task_id" in event.data) {
+            taskId = (event.data as any).task_id;
+            // Attach taskId to all subsequent events
+            continue;
+          }
+          
+          // Attach taskId to event if available
+          const eventWithTaskId = taskId ? { ...event, taskId } : event;
+          yield eventWithTaskId as T & { taskId?: string };
+        }
       }
     }
+  } finally {
+    reader.releaseLock();
   }
 }
 

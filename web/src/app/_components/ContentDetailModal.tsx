@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "~/core/utils";
 import { Markdown } from "./Markdown";
 import { HotelInfoDisplay } from "./HotelInfoDisplay";
@@ -25,6 +25,26 @@ export function ContentDetailModal({
 }: ContentDetailModalProps) {
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
+
+  // 添加ESC键关闭功能
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // 防止背景滚动
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
 
   // 使用 Tailwind CSS 类来控制模态框的显示/隐藏，而不是直接返回 null
   // 这样可以保持 DOM 结构，避免在组件卸载时出现 removeChild 错误
@@ -97,8 +117,14 @@ export function ContentDetailModal({
   };
 
   return (
-    <div className={cn(modalClasses, "bg-gray-100/50 backdrop-blur-sm")}>
-      <div className="modal-content w-[90vw] max-w-2xl">
+    <div 
+      className={cn(modalClasses, "bg-gray-100/50 backdrop-blur-sm")}
+      onClick={onClose}
+    >
+      <div 
+        className="modal-content w-[90vw] max-w-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
           <div className="flex-1">
@@ -183,38 +209,38 @@ function FlightInfoDisplay({ content }: { content: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* 机票卡片展示 */}
       <div className="grid gap-4">
         {flightInfo.flights.map((flight, index) => (
-          <div key={index} className="rounded-xl border border-gray-200/60 bg-gradient-to-r from-purple-50/60 to-indigo-50/60 p-6 shadow-sm backdrop-blur-sm">
+          <div key={index} className="rounded-lg border border-gray-200/60 bg-gradient-to-r from-purple-50/60 to-indigo-50/60 p-3 shadow-sm backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="rounded-full bg-purple-100/80 p-3">
-                  <svg className="h-6 w-6 text-purple-600/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="rounded-full bg-purple-100/80 p-2">
+                  <svg className="h-4 w-4 text-purple-600/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">航班 {flight}</h3>
+                  <h3 className="text-base font-semibold text-gray-900">航班 {flight}</h3>
                   {flightInfo.dates[index] && (
-                    <p className="text-sm text-gray-600">{flightInfo.dates[index]}</p>
+                    <p className="text-xs text-gray-600">{flightInfo.dates[index]}</p>
                   )}
                 </div>
               </div>
               {flightInfo.prices[index] && (
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-purple-600/90">¥{flightInfo.prices[index]}</p>
-                  <p className="text-sm text-gray-500">起</p>
+                  <p className="text-lg font-bold text-purple-600/90">¥{flightInfo.prices[index]}</p>
+                  <p className="text-xs text-gray-500">起</p>
                 </div>
               )}
             </div>
             
             {flightInfo.times[index] && (
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-2 flex items-center justify-between">
                 <div className="text-center">
-                  <p className="text-xl font-semibold text-gray-900">{flightInfo.times[index].departure}</p>
-                  <p className="text-sm text-gray-500">出发</p>
+                  <p className="text-base font-semibold text-gray-900">{flightInfo.times[index].departure}</p>
+                  <p className="text-xs text-gray-500">出发</p>
                 </div>
                 <div className="flex-1 px-4">
                   <div className="relative">
@@ -227,8 +253,8 @@ function FlightInfoDisplay({ content }: { content: string }) {
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-semibold text-gray-900">{flightInfo.times[index].arrival}</p>
-                  <p className="text-sm text-gray-500">到达</p>
+                  <p className="text-base font-semibold text-gray-900">{flightInfo.times[index].arrival}</p>
+                  <p className="text-xs text-gray-500">到达</p>
                 </div>
               </div>
             )}
@@ -237,7 +263,7 @@ function FlightInfoDisplay({ content }: { content: string }) {
       </div>
       
       {/* 原始内容 */}
-      <div className="rounded-lg bg-gray-50/60 p-4 backdrop-blur-sm border border-gray-200/40">
+      <div className="rounded-lg bg-gray-50/60 p-2 backdrop-blur-sm border border-gray-200/40">
         <h4 className="mb-2 font-medium text-gray-900">详细信息</h4>
         <div className="prose max-w-none text-sm">
           <Markdown>{content}</Markdown>

@@ -62,32 +62,32 @@ export function EnhancedSearchResults({
     switch (type) {
       case "flight":
         return (
-          <div className="rounded-full bg-blue-100 p-2">
-            <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-full bg-blue-100 p-1">
+            <svg className="h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
         );
       case "hotel":
         return (
-          <div className="rounded-full bg-green-100 p-2">
-            <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-full bg-green-100 p-1">
+            <svg className="h-3 w-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
         );
       case "product":
         return (
-          <div className="rounded-full bg-purple-100 p-2">
-            <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-full bg-purple-100 p-1">
+            <svg className="h-3 w-3 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </div>
         );
       default:
         return (
-          <div className="rounded-full bg-gray-100 p-2">
-            <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-full bg-gray-100 p-1">
+            <svg className="h-3 w-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9V3" />
             </svg>
           </div>
@@ -98,35 +98,35 @@ export function EnhancedSearchResults({
   const getResultBadge = (type: SearchResult["type"]) => {
     switch (type) {
       case "flight":
-        return <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">机票</span>;
+        return <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800">机票</span>;
       case "hotel":
-        return <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">酒店</span>;
+        return <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">酒店</span>;
       case "product":
-        return <span className="rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800">商品</span>;
+        return <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-800">商品</span>;
       default:
         return null;
     }
   };
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-2", className)}>
       {results.map((result, index) => {
         const type = detectResultType(result.title, result.content || result.snippet);
         
         return (
           <div
             key={`${result.url}-${index}`}
-            className="enhanced-card group cursor-pointer p-4"
+            className="enhanced-card group cursor-pointer p-2"
             onClick={() => handleResultClick({ ...result, type })}
           >
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-2">
               {getResultIcon(type)}
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <img
-                      className="h-4 w-4 rounded-full bg-slate-100 shadow"
+                      className="h-3 w-3 rounded-full bg-slate-100 shadow"
                       src={new URL(result.url).origin + "/favicon.ico"}
                       alt={result.title}
                       onError={(e) => {
@@ -137,20 +137,20 @@ export function EnhancedSearchResults({
                     {getResultBadge(type)}
                   </div>
                   
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-sm font-medium">
+                  <button className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-xs font-medium">
                     查看详情 →
                   </button>
                 </div>
                 
-                <h3 className="mt-1 font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="mt-0.5 text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                   {result.title}
                 </h3>
                 
-                <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">
                   {result.snippet || "点击查看完整内容"}
                 </p>
                 
-                <div className="mt-2 flex items-center justify-between">
+                <div className="mt-1 flex items-center justify-between">
                   <a
                     href={result.url}
                     target="_blank"

@@ -6,21 +6,28 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
-  // Turbopack disabled due to WASM binding issues on Windows
-  // turbopack: {
-  //   rules: {
-  //     "*.txt": {
-  //       loaders: ["raw-loader"],
-  //       as: "*.js",
-  //     },
-  //   },
-  // },
+  turbopack: {
+    rules: {
+      "*.txt": {
+        loaders: ["raw-loader"],
+        as: "*.js",
+      },
+    },
+  },
   webpack: (config) => {
     config.module.rules.push({
       test: /\.txt$/,
       use: 'raw-loader',
     });
     return config;
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8000/api/:path*',
+      },
+    ];
   },
 };
 

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { type ChatEvent, chatStream } from "../api";
+import { type ChatEvent, chatStream, abortTask } from "../api";
 import { chatStream as mockChatStream } from "../api/mock";
 import {
   type WorkflowMessage,
@@ -10,15 +10,19 @@ import {
 import { clone } from "../utils";
 import { WorkflowEngine } from "../workflow";
 
-export const useStore = create<{
+interface Store {
   messages: Message[];
   responding: boolean;
+  currentTaskId: string | null;
   state: {
     messages: { role: string; content: string }[];
   };
-}>(() => ({
+}
+
+export const useStore = create<Store>(() => ({
   messages: [],
   responding: false,
+  currentTaskId: null,
   state: {
     messages: [],
   },
@@ -58,7 +62,7 @@ export async function sendMessage(
   options: { abortSignal?: AbortSignal } = {},
 ) {
   addMessage(message);
-  let stream: AsyncIterable<ChatEvent>;
+  let stream: AsyncIterable<ChatEvent & { taskId?: string }>;
   if (typeof window !== 'undefined' && window.location.search.includes("mock")) {
     stream = mockChatStream(message);
   } else {
@@ -69,6 +73,11 @@ export async function sendMessage(
   let textMessage: TextMessage | null = null;
   try {
     for await (const event of stream) {
+      // 捕获任务ID
+      if (event.taskId) {
+        useStore.setState({ currentTaskId: event.taskId });
+      }
+      
       switch (event.type) {
         case "start_of_agent":
           textMessage = {
@@ -124,6 +133,7 @@ export async function sendMessage(
     throw e;
   } finally {
     setResponding(false);
+    useStore.setState({ currentTaskId: null });
   }
   return message;
 }
@@ -140,4 +150,20 @@ export function _setState(state: {
   messages: { role: string; content: string }[];
 }) {
   useStore.setState({ state });
+}
+
+export async function abortCurrentTask(): Promise<boolean> {
+  const currentTaskId = useStore.getState().currentTaskId;
+  if (!currentTaskId) {
+    return false;
+  }
+  
+  try {
+    await abortTask(currentTaskId);
+    useStore.setState({ currentTaskId: null, responding: false });
+    return true;
+  } catch (error) {
+    console.error('Failed to abort task:', error);
+    return false;
+  }
 }

@@ -5,11 +5,10 @@ from markdownify import markdownify as md
 
 
 class Article:
-    url: str
-
-    def __init__(self, title: str, html_content: str):
+    def __init__(self, title: str, html_content: str, url: str = ""):
         self.title = title
         self.html_content = html_content
+        self.url = url
 
     def to_markdown(self, including_title: bool = True) -> str:
         markdown = ""

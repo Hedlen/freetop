@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+import { X } from 'lucide-react';
 import { cn } from '~/core/utils';
 import { type Message } from '~/core/messaging';
 
@@ -30,7 +32,7 @@ export function SessionHistoryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* 背景遮罩 */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -38,22 +40,21 @@ export function SessionHistoryModal({
       />
       
       {/* 模态框内容 */}
-      <div className="relative w-full max-w-2xl mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+      <div className="relative w-full max-w-sm sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-4 bg-white rounded-lg shadow-xl border border-gray-200">
         {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20">
-          <h2 className="text-xl font-semibold text-white">会话历史</h2>
+        <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-200">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">会话历史</h2>
           <button
             onClick={onClose}
-            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
           </button>
         </div>
         
-        {/* 会话列表 */}
-        <div className="max-h-96 overflow-y-auto p-6">
+        {/* 内容区域 */}
+        <div className="p-3 sm:p-6">
+          <div className="max-h-80 sm:max-h-96 md:max-h-[500px] lg:max-h-[600px] overflow-y-auto space-y-2 sm:space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {sessions.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -64,7 +65,7 @@ export function SessionHistoryModal({
               <p className="text-white/60">暂无历史会话</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
               {sessions.map((session, index) => {
                 const firstMessage = session[0];
                 const title = firstMessage?.content || `会话 ${index + 1}`;
@@ -101,6 +102,7 @@ export function SessionHistoryModal({
               })}
             </div>
           )}
+          </div>
         </div>
         
         {/* 底部 */}

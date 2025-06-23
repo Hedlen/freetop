@@ -99,8 +99,8 @@ export function InputBox({
       <div className="w-full">
         <textarea
           className={cn(
-            "m-0 w-full resize-none border-none px-4 py-3 text-lg bg-transparent text-gray-800 placeholder-gray-400",
-            size === "large" ? "min-h-32" : "min-h-4",
+            "m-0 w-full resize-none border-none px-2 sm:px-3 lg:px-4 xl:px-5 py-1 sm:py-1.5 lg:py-2 xl:py-2.5 text-xs sm:text-sm lg:text-base xl:text-lg bg-transparent text-gray-800 placeholder-gray-400",
+            size === "large" ? "min-h-12 sm:min-h-16 lg:min-h-20 xl:min-h-24" : "min-h-2",
           )}
           placeholder="What can I do for you?"
           value={message}
@@ -112,11 +112,11 @@ export function InputBox({
           }}
         />
       </div>
-      <div className="flex items-center px-4 py-2">
-        <div className="flex flex-grow items-center gap-2">
+      <div className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5">
+        <div className="flex flex-grow items-center gap-1 sm:gap-2 lg:gap-3 xl:gap-4">
           <button
             className={cn(
-              "flex h-8 items-center gap-2 rounded-2xl border px-4 text-sm transition-all duration-300 hover:shadow-lg",
+              "flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border px-2 sm:px-4 lg:px-5 xl:px-6 text-xs sm:text-sm lg:text-base transition-all duration-300 hover:shadow-lg",
               deepThinkingMode
                 ? "border-blue-400 bg-blue-100 text-blue-700 shadow-lg shadow-blue-500/20"
                 : "border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700",
@@ -130,10 +130,10 @@ export function InputBox({
           </button>
           <button
             className={cn(
-              "flex h-8 items-center gap-1 rounded-lg border px-3 text-sm transition-all duration-200",
+              "flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 rounded-lg border px-2 sm:px-3 lg:px-4 xl:px-5 text-xs sm:text-sm lg:text-base transition-all duration-200",
               searchBeforePlanning
                 ? "border-blue-400 bg-blue-100 text-blue-700 shadow-lg shadow-blue-500/20"
-                : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400",
+                : "border-gray-300 bg-white text-gray-700 hover:bg-blue-100 hover:border-blue-400",
             )}
             onClick={() => {
               setSearchBeforePlanning(!searchBeforePlanning);
@@ -145,10 +145,10 @@ export function InputBox({
             <span>Search</span>
           </button>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
           <button
             className={cn(
-              "h-10 w-10 rounded-full transition-all duration-300 hover:shadow-lg flex items-center justify-center",
+              "h-8 w-8 sm:h-10 sm:w-10 lg:h-11 lg:w-11 xl:h-12 xl:w-12 rounded-full transition-all duration-300 hover:shadow-lg flex items-center justify-center",
               responding 
                 ? "bg-red-600/80 text-red-200 hover:bg-red-500/90 shadow-red-500/30" 
                 : "bg-blue-500 text-white hover:bg-blue-600 hover:shadow-blue-500/30 disabled:bg-gray-400 disabled:text-gray-300",

@@ -24,3 +24,39 @@ export function chatStream(
     signal: options.abortSignal,
   });
 }
+
+export async function abortTask(taskId: string): Promise<{ status: string; message: string }> {
+  const response = await fetch(env.NEXT_PUBLIC_API_URL + `/chat/abort/${taskId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to abort task: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+export async function abortAllUserTasks(): Promise<{ status: string; message: string; aborted_tasks?: string[] }> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const response = await fetch(env.NEXT_PUBLIC_API_URL + '/chat/abort-user-tasks', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to abort user tasks: ${response.status}`);
+  }
+  
+  return response.json();
+}
