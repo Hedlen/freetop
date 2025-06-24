@@ -69,8 +69,8 @@ async def run_agent_workflow(
     if not user_input_messages:
         raise ValueError("Input could not be empty")
 
-    if debug:
-        enable_debug_logging()
+    if :
+        enable__logging()
 
     logger.info(f"Starting workflow with user input: {user_input_messages}")
 

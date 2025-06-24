@@ -1,8 +1,9 @@
 // 移除Ant Design图标导入
-import { type KeyboardEvent, useCallback, useEffect, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useState, useRef } from "react";
 
 import { Atom } from "~/core/icons";
 import { cn } from "~/core/utils";
+import { type ContentItem } from "~/core/messaging";
 
 export function InputBox({
   className,
@@ -15,16 +16,18 @@ export function InputBox({
   size?: "large" | "normal";
   responding?: boolean;
   onSend?: (
-    message: string,
+    content: string | ContentItem[],
     options: { deepThinkingMode: boolean; searchBeforePlanning: boolean },
   ) => void;
   onCancel?: () => void;
 }) {
   const [message, setMessage] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [deepThinkingMode, setDeepThinkMode] = useState(false);
   const [searchBeforePlanning, setSearchBeforePlanning] = useState(false);
   const [imeStatus, setImeStatus] = useState<"active" | "inactive">("inactive");
   const [isClient, setIsClient] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const saveConfig = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -56,22 +59,61 @@ export function InputBox({
       saveConfig();
     }
   }, [deepThinkingMode, searchBeforePlanning, saveConfig, isClient]);
+  const handleImageUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          setImages(prev => [...prev, result]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSendMessage = useCallback(() => {
     if (responding) {
       onCancel?.();
     } else {
-      if (message.trim() === "") {
+      if (message.trim() === "" && images.length === 0) {
         return;
       }
       if (onSend) {
-        onSend(message, { deepThinkingMode, searchBeforePlanning });
+        // 构建多模态内容
+        if (images.length > 0) {
+          const content: ContentItem[] = [];
+          if (message.trim()) {
+            content.push({ type: "text", text: message.trim() });
+          }
+          images.forEach(imageUrl => {
+            content.push({ type: "image", image_url: imageUrl });
+          });
+          onSend(content, { deepThinkingMode, searchBeforePlanning });
+        } else {
+          onSend(message, { deepThinkingMode, searchBeforePlanning });
+        }
         setMessage("");
+        setImages([]);
       }
     }
   }, [
     responding,
     onCancel,
     message,
+    images,
     onSend,
     deepThinkingMode,
     searchBeforePlanning,
@@ -96,6 +138,28 @@ export function InputBox({
   );
   return (
     <div className={cn(className)}>
+      {/* 图片预览区域 */}
+      {images.length > 0 && (
+        <div className="mb-2 p-2 border-t border-gray-200">
+          <div className="flex flex-wrap gap-2">
+            {images.map((image, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={image}
+                  alt={`Upload ${index + 1}`}
+                  className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+                />
+                <button
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="w-full">
         <textarea
           className={cn(
@@ -114,6 +178,25 @@ export function InputBox({
       </div>
       <div className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5">
         <div className="flex flex-grow items-center gap-1 sm:gap-2 lg:gap-3 xl:gap-4">
+          {/* 图片上传按钮 */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 rounded-lg border px-2 sm:px-3 lg:px-4 xl:px-5 text-xs sm:text-sm lg:text-base transition-all duration-200 border-gray-300 bg-white text-gray-700 hover:bg-blue-100 hover:border-blue-400"
+            title="Upload Image"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="hidden sm:inline">Image</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+          />
           <button
             className={cn(
               "flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border px-2 sm:px-4 lg:px-5 xl:px-6 text-xs sm:text-sm lg:text-base transition-all duration-300 hover:shadow-lg",

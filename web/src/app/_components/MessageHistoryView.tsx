@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
-import { type Message } from "~/core/messaging";
+import { type Message, type ContentItem } from "~/core/messaging";
 import { cn } from "~/core/utils";
 import { sendMessage, useStore, setResponding, addMessage, updateMessage } from "~/core/store";
 
@@ -195,7 +195,121 @@ function MessageView({ message }: { message: Message }) {
   };
   
   console.log("Rendering message:", message);
-  if (message.type === "text" && message.content) {
+  
+  // 渲染多模态消息内容的函数
+  const renderContent = () => {
+    if (message.type === "multimodal" && Array.isArray(message.content)) {
+      return (
+        <div className="space-y-3">
+          {message.content.map((item: ContentItem, index: number) => {
+            if (item.type === "text" && item.text) {
+              return (
+                <Markdown
+                  key={index}
+                  className={cn(
+                    "prose prose-sm max-w-none break-words text-sm",
+                    message.role === "user" && "prose-invert",
+                    message.role === "assistant" && "prose-gray"
+                  )}
+                  components={{
+                    a: ({ href, children }) => (
+                      <a 
+                        href={href} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className={cn(
+                          "underline transition-colors",
+                          message.role === "user" ? "text-blue-200 hover:text-white" : "text-blue-600 hover:text-blue-800"
+                        )}
+                      >
+                        {children}
+                      </a>
+                    ),
+                    p: ({ children }) => (
+                      <p className="mb-1.5 last:mb-0 text-sm leading-relaxed">{children}</p>
+                    ),
+                    code: ({ children, className }) => {
+                      const isInline = !className;
+                      return isInline ? (
+                        <code className={cn(
+                          "px-1 py-0.5 rounded text-xs font-mono whitespace-pre-wrap",
+                          message.role === "user" ? "bg-blue-700 text-blue-100" : "bg-gray-100 text-gray-800"
+                        )}>
+                          {children}
+                        </code>
+                      ) : (
+                        <code className={cn(className, "whitespace-pre-wrap")} >{children}</code>
+                      );
+                    },
+                  }}
+                >
+                  {item.text}
+                </Markdown>
+              );
+            } else if (item.type === "image" && item.image_url) {
+              return (
+                <div key={index} className="mt-2">
+                  <img 
+                    src={item.image_url} 
+                    alt="用户上传的图片" 
+                    className="max-w-full h-auto rounded-lg shadow-sm border border-gray-200"
+                    style={{ maxHeight: '300px' }}
+                  />
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      );
+    } else if (message.type === "text" && typeof message.content === "string") {
+      return (
+        <Markdown
+          className={cn(
+            "prose prose-sm max-w-none break-words text-sm",
+            message.role === "user" && "prose-invert",
+            message.role === "assistant" && "prose-gray"
+          )}
+          components={{
+            a: ({ href, children }) => (
+              <a 
+                href={href} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={cn(
+                  "underline transition-colors",
+                  message.role === "user" ? "text-blue-200 hover:text-white" : "text-blue-600 hover:text-blue-800"
+                )}
+              >
+                {children}
+              </a>
+            ),
+            p: ({ children }) => (
+              <p className="mb-1.5 last:mb-0 text-sm leading-relaxed">{children}</p>
+            ),
+            code: ({ children, className }) => {
+              const isInline = !className;
+              return isInline ? (
+                <code className={cn(
+                  "px-1 py-0.5 rounded text-xs font-mono whitespace-pre-wrap",
+                  message.role === "user" ? "bg-blue-700 text-blue-100" : "bg-gray-100 text-gray-800"
+                )}>
+                  {children}
+                </code>
+              ) : (
+                <code className={cn(className, "whitespace-pre-wrap")} >{children}</code>
+              );
+            },
+          }}
+        >
+          {message.content}
+        </Markdown>
+      );
+    }
+    return null;
+  };
+
+  if ((message.type === "text" && message.content) || (message.type === "multimodal" && Array.isArray(message.content))) {
     return (
       <div 
         className={cn("flex mb-8 group", message.role === "user" ? "justify-end" : "justify-start")}
@@ -217,46 +331,7 @@ function MessageView({ message }: { message: Message }) {
               message.role === "assistant" && "bg-[#fefefe] border border-gray-100 text-gray-800 shadow-sm md:max-w-[85%] lg:max-w-[80%] xl:max-w-[75%]",
             )}
           >
-          <Markdown
-            className={cn(
-              "prose prose-sm max-w-none break-words text-sm", // 减小字体大小
-              message.role === "user" && "prose-invert",
-              message.role === "assistant" && "prose-gray"
-            )}
-            components={{
-              a: ({ href, children }) => (
-                <a 
-                  href={href} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={cn(
-                    "underline transition-colors",
-                    message.role === "user" ? "text-blue-200 hover:text-white" : "text-blue-600 hover:text-blue-800"
-                  )}
-                >
-                  {children}
-                </a>
-              ),
-              p: ({ children }) => (
-                <p className="mb-1.5 last:mb-0 text-sm leading-relaxed">{children}</p>
-              ),
-              code: ({ children, className }) => {
-                const isInline = !className;
-                return isInline ? (
-                  <code className={cn(
-                    "px-1 py-0.5 rounded text-xs font-mono whitespace-pre-wrap", // 减小代码字体
-                    message.role === "user" ? "bg-blue-700 text-blue-100" : "bg-gray-100 text-gray-800"
-                  )}>
-                    {children}
-                  </code>
-                ) : (
-                  <code className={cn(className, "whitespace-pre-wrap")} >{children}</code> // Added whitespace-pre-wrap
-                );
-              },
-            }}
-          >
-            {message.content}
-          </Markdown>
+            {renderContent()}
           </div>
           
           {/* 操作按钮 - 根据角色显示不同按钮 */}

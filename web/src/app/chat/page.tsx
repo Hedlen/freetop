@@ -6,6 +6,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { sendMessage, useStore, clearMessages, abortCurrentTask } from "~/core/store";
 import { abortAllUserTasks } from "~/core/api";
 import { cn } from "~/core/utils";
+import { type ContentItem } from "~/core/messaging";
 
 import { AppHeader } from "../_components/AppHeader";
 import { InputBox } from "../_components/InputBox";
@@ -140,19 +141,30 @@ export default function HomePage() {
 
   const handleSendMessage = useCallback(
     async (
-      content: string,
+      content: string | ContentItem[],
       config: { deepThinkingMode: boolean; searchBeforePlanning: boolean },
     ) => {
       // 登录检查已移至AppHeader组件
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
+      
+      // 根据内容类型创建不同的消息
+      const message = typeof content === 'string' 
+        ? {
+            id: nanoid(),
+            role: "user" as const,
+            type: "text" as const,
+            content,
+          }
+        : {
+            id: nanoid(),
+            role: "user" as const,
+            type: "multimodal" as const,
+            content,
+          };
+      
       await sendMessage(
-        {
-          id: nanoid(),
-          role: "user",
-          type: "text",
-          content,
-        },
+        message,
         config,
         { abortSignal: abortController.signal },
       );

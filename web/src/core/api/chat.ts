@@ -7,13 +7,19 @@ import { type ChatEvent } from "./types";
 
 export function chatStream(
   userMessage: Message,
-  state: { messages: { role: string; content: string }[] },
+  state: { messages: { role: string; content: string | any[] }[] },
   params: { deepThinkingMode: boolean; searchBeforePlanning: boolean },
   options: { abortSignal?: AbortSignal } = {},
 ) {
+  // 转换消息格式以适配后端API
+  const convertedMessage = {
+    role: userMessage.role,
+    content: userMessage.type === 'multimodal' ? userMessage.content : userMessage.content,
+  };
+  
   return fetchStream<ChatEvent>(env.NEXT_PUBLIC_API_URL + "/chat/stream", {
     body: JSON.stringify({
-      messages: [...state.messages, userMessage],
+      messages: [...state.messages, convertedMessage],
       deep_thinking_mode: params.deepThinkingMode,
       search_before_planning: params.searchBeforePlanning,
       debug:
