@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
-import { type Message, type ContentItem } from "~/core/messaging";
+import { type Message } from "~/core/messaging";
 import { cn } from "~/core/utils";
 import { sendMessage, useStore, setResponding, addMessage, updateMessage } from "~/core/store";
 
@@ -112,75 +112,11 @@ function MessageView({ message }: { message: Message }) {
           const newMessages = messages.filter(m => m.id !== message.id);
           useStore.setState({ messages: newMessages });
           
-          // 直接使用现有的用户消息重新生成回复，不添加新的用户消息
-           const { chatStream } = await import('~/core/api');
-          const stream = chatStream(userMessage, useStore.getState().state, {
+          // 使用store中的sendMessage函数重新生成回复
+          await sendMessage(userMessage, {
             deepThinkingMode: false,
             searchBeforePlanning: false
           });
-          
-          setResponding(true);
-          
-          let textMessage: any = null;
-          try {
-            for await (const event of stream) {
-              // 捕获任务ID
-              if (event.taskId) {
-                useStore.setState({ currentTaskId: event.taskId });
-              }
-              
-              switch (event.type) {
-                case "start_of_agent":
-                  textMessage = {
-                    id: event.data.agent_id,
-                    role: "assistant",
-                    type: "text",
-                    content: "",
-                  };
-                  addMessage(textMessage);
-                  break;
-                case "message":
-                  if (textMessage) {
-                    textMessage.content += event.data.delta.content;
-                    updateMessage({
-                      id: textMessage.id,
-                      content: textMessage.content,
-                    });
-                  }
-                  break;
-                case "end_of_agent":
-                  textMessage = null;
-                  break;
-                case "start_of_workflow":
-                   const { WorkflowEngine } = await import('~/core/workflow/WorkflowEngine');
-                  const workflowEngine = new WorkflowEngine();
-                  const workflow = workflowEngine.start(event);
-                  const workflowMessage = {
-                    id: event.data.workflow_id,
-                    role: "assistant",
-                    type: "workflow",
-                    content: { workflow: workflow },
-                  };
-                  addMessage(workflowMessage);
-                  for await (const updatedWorkflow of workflowEngine.run(stream)) {
-                    updateMessage({
-                      id: workflowMessage.id,
-                      content: { workflow: updatedWorkflow },
-                    });
-                  }
-                  break;
-                case "end_of_workflow":
-                  break;
-                default:
-                  console.log("Unknown event type:", event.type);
-              }
-            }
-          } catch (error) {
-            console.error("Error during retry:", error);
-          } finally {
-            setResponding(false);
-            useStore.setState({ currentTaskId: null });
-          }
         }
       }
     }
@@ -198,71 +134,8 @@ function MessageView({ message }: { message: Message }) {
   
   // 渲染多模态消息内容的函数
   const renderContent = () => {
-    if (message.type === "multimodal" && Array.isArray(message.content)) {
-      return (
-        <div className="space-y-3">
-          {message.content.map((item: ContentItem, index: number) => {
-            if (item.type === "text" && item.text) {
-              return (
-                <Markdown
-                  key={index}
-                  className={cn(
-                    "prose prose-sm max-w-none break-words text-sm",
-                    message.role === "user" && "prose-invert",
-                    message.role === "assistant" && "prose-gray"
-                  )}
-                  components={{
-                    a: ({ href, children }) => (
-                      <a 
-                        href={href} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className={cn(
-                          "underline transition-colors",
-                          message.role === "user" ? "text-blue-200 hover:text-white" : "text-blue-600 hover:text-blue-800"
-                        )}
-                      >
-                        {children}
-                      </a>
-                    ),
-                    p: ({ children }) => (
-                      <p className="mb-1.5 last:mb-0 text-sm leading-relaxed">{children}</p>
-                    ),
-                    code: ({ children, className }) => {
-                      const isInline = !className;
-                      return isInline ? (
-                        <code className={cn(
-                          "px-1 py-0.5 rounded text-xs font-mono whitespace-pre-wrap",
-                          message.role === "user" ? "bg-blue-700 text-blue-100" : "bg-gray-100 text-gray-800"
-                        )}>
-                          {children}
-                        </code>
-                      ) : (
-                        <code className={cn(className, "whitespace-pre-wrap")} >{children}</code>
-                      );
-                    },
-                  }}
-                >
-                  {item.text}
-                </Markdown>
-              );
-            } else if (item.type === "image" && item.image_url) {
-              return (
-                <div key={index} className="mt-2">
-                  <img 
-                    src={item.image_url} 
-                    alt="用户上传的图片" 
-                    className="max-w-full h-auto rounded-lg shadow-sm border border-gray-200"
-                    style={{ maxHeight: '300px' }}
-                  />
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>
-      );
-    } else if (message.type === "text" && typeof message.content === "string") {
+
+    if (message.type === "text" && typeof message.content === "string") {
       return (
         <Markdown
           className={cn(

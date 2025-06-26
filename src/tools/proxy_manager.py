@@ -167,7 +167,7 @@ class ProxyManager:
                     proxy_server, _ = winreg.QueryValueEx(key, "ProxyServer")
                     return proxy_server
         except Exception as e:
-            logger.(f"检测Windows代理失败: {e}")
+            logger.warning(f"检测Windows代理失败: {e}")
         return None
     
     def _detect_unix_proxy(self) -> Optional[str]:

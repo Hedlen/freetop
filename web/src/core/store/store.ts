@@ -30,7 +30,18 @@ export const useStore = create<Store>(() => ({
 }));
 
 export function addMessage(message: Message) {
-  useStore.setState((state) => ({ messages: [...state.messages, message] }));
+  useStore.setState((state) => {
+    // Check if a message with the same ID already exists
+    const existingIndex = state.messages.findIndex((m) => m.id === message.id);
+    if (existingIndex !== -1) {
+      // If message exists, update it instead of adding a duplicate
+      const updatedMessages = [...state.messages];
+      updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], ...message };
+      return { messages: updatedMessages };
+    }
+    // If no duplicate, add the new message
+    return { messages: [...state.messages, message] };
+  });
   return message;
 }
 
@@ -119,9 +130,10 @@ export async function sendMessage(
               content: { workflow: updatedWorkflow },
             });
           }
-          _setState({
-            messages: workflow.finalState?.messages ?? [],
-          });
+          // 不要覆盖整个messages数组，这会导致无限更新循环
+          // _setState({
+          //   messages: workflow.finalState?.messages ?? [],
+          // });
           break;
         default:
           break;
@@ -150,7 +162,8 @@ export function setResponding(responding: boolean) {
 export function _setState(state: {
   messages: { role: string; content: string }[];
 }) {
-  useStore.setState({ state });
+  // 修复：应该合并状态而不是嵌套
+  useStore.setState(state);
 }
 
 export async function abortCurrentTask(): Promise<boolean> {

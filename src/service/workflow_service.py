@@ -69,7 +69,7 @@ async def run_agent_workflow(
     if not user_input_messages:
         raise ValueError("Input could not be empty")
 
-    if :
+    if debug:
         enable__logging()
 
     logger.info(f"Starting workflow with user input: {user_input_messages}")
@@ -268,21 +268,45 @@ async def run_agent_workflow(
 
     if is_workflow_triggered:
         # TODO: remove messages attributes after Frontend being compatible with final_session_state event.
+        def safe_convert_message(msg):
+            """安全地转换消息，处理可能的转换错误"""
+            try:
+                return convert_message_to_dict(msg)
+            except Exception as e:
+                logger.warning(f"Failed to convert message to dict: {e}")
+                # 返回一个安全的默认格式
+                return {
+                    "role": getattr(msg, 'role', 'user'),
+                    "content": str(getattr(msg, 'content', ''))
+                }
+        
         yield {
             "event": "end_of_workflow",
             "data": {
                 "workflow_id": workflow_id,
                 "messages": [
-                    convert_message_to_dict(msg)
+                    safe_convert_message(msg)
                     for msg in data["output"].get("messages", [])
                 ],
             },
         }
+    def safe_convert_message(msg):
+        """安全地转换消息，处理可能的转换错误"""
+        try:
+            return convert_message_to_dict(msg)
+        except Exception as e:
+            logger.warning(f"Failed to convert message to dict: {e}")
+            # 返回一个安全的默认格式
+            return {
+                "role": getattr(msg, 'role', 'user'),
+                "content": str(getattr(msg, 'content', ''))
+            }
+    
     yield {
         "event": "final_session_state",
         "data": {
             "messages": [
-                convert_message_to_dict(msg)
+                safe_convert_message(msg)
                 for msg in data["output"].get("messages", [])
             ],
         },

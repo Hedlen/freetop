@@ -132,7 +132,7 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+    <div className={`modal-overlay ${isOpen ? 'opacity-100' : 'opacity-0'} p-2 sm:p-4`}>
       {/* 背景遮罩 */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -140,7 +140,7 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
       />
       
       {/* 模态框内容 */}
-      <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+      <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl z-10">
         {/* 头部 */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20">
           <h2 className="text-lg sm:text-xl font-semibold text-white">

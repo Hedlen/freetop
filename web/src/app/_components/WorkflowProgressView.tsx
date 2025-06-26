@@ -109,7 +109,7 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
   const reason = task.payload.reason;
   const markdown = `## ${plan.title ?? ""}\n\n${plan.steps?.map((step) => `- **${step.title ?? ""}**\n\n${step.description ?? ""}`).join("\n\n") ?? ""}`;
   return (
-    <div key={task.id} className="space-y-4">
+    <div className="space-y-4">
       {reason && (
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 w-full">
           <button
@@ -153,86 +153,62 @@ function ReportActions({ reportContent }: { reportContent: string }) {
     }
   };
 
-  const handleRetry = async () => {
-    const { useStore } = await import('~/core/store');
-    const { addMessage, updateMessage } = useStore.getState();
-    const messages = useStore.getState().messages;
-    
-    // 找到当前工作流消息对应的用户消息
-    const currentWorkflowIndex = messages.findIndex(m => m.type === "workflow");
-    if (currentWorkflowIndex > 0) {
-      const userMessage = messages[currentWorkflowIndex - 1];
-      if (userMessage && userMessage.role === "user") {
-        // 删除当前工作流回复
-        const newMessages = messages.filter(m => m.type !== "workflow");
-        useStore.setState({ messages: newMessages });
-        
-        // 重新生成回复
-        const { chatStream } = await import('~/core/api');
-        const stream = chatStream(userMessage, useStore.getState().state, {
-          deepThinkingMode: true,
-          searchBeforePlanning: false
-        });
-        
-        let textMessage: any = null;
-        try {
-          for await (const event of stream) {
-            if (event.taskId) {
-              useStore.setState({ currentTaskId: event.taskId });
-            }
-            
-            switch (event.type) {
-              case "start_of_agent":
-                textMessage = {
-                  id: event.data.agent_id,
-                  role: "assistant",
-                  type: "text",
-                  content: "",
-                };
-                addMessage(textMessage);
-                break;
-              case "message":
-                if (textMessage) {
-                  textMessage.content += event.data.delta.content;
-                  updateMessage({
-                    id: textMessage.id,
-                    content: textMessage.content,
-                  });
-                }
-                break;
-              case "end_of_agent":
-                textMessage = null;
-                break;
-              case "start_of_workflow":
-                const { WorkflowEngine } = await import('~/core/workflow/WorkflowEngine');
-                const workflowEngine = new WorkflowEngine();
-                const workflow = workflowEngine.start(event);
-                const workflowMessage = {
-                  id: event.data.workflow_id,
-                  role: "assistant",
-                  type: "workflow",
-                  content: { workflow: workflow },
-                };
-                addMessage(workflowMessage);
-                for await (const updatedWorkflow of workflowEngine.run(stream)) {
-                  updateMessage({
-                    id: workflowMessage.id,
-                    content: { workflow: updatedWorkflow },
-                  });
-                }
-                break;
-              case "end_of_workflow":
-                break;
-              default:
-                console.log("Unknown event type:", event.type);
-            }
-          }
-        } catch (error) {
-          console.error("Error during retry:", error);
-        } finally {
-          useStore.setState({ currentTaskId: null });
+  const handleReportRetry = async () => {
+    console.log('Report retry button clicked');
+    try {
+      const { useStore, sendMessage, setResponding } = await import('~/core/store');
+      const messages = useStore.getState().messages;
+      
+      console.log('Current messages:', messages.length);
+      console.log('Messages:', messages.map(m => ({ type: m.type, role: m.role, id: m.id })));
+      
+      // 找到最后一个工作流消息对应的用户消息
+      let currentWorkflowIndex = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].type === "workflow") {
+          currentWorkflowIndex = i;
+          break;
         }
       }
+      
+      console.log('Found workflow at index:', currentWorkflowIndex);
+      
+      if (currentWorkflowIndex > 0) {
+        let userMessage = null;
+        // 向上查找直到找到第一个用户消息
+        for (let i = currentWorkflowIndex - 1; i >= 0; i--) {
+          if (messages[i].role === "user" && messages[i].content) {
+            userMessage = messages[i];
+            break;
+          }
+        }
+        console.log('User message found:', userMessage);
+        if (userMessage) {
+          console.log('Starting retry process...');
+          // 删除当前工作流回复及之后的所有消息
+          const newMessages = messages.slice(0, currentWorkflowIndex);
+          console.log('Updating messages, new length:', newMessages.length);
+          useStore.setState({ messages: newMessages });
+        
+          // 使用sendMessage重新生成回复，这样可以确保状态管理的一致性
+          console.log('Sending message for retry...');
+          await sendMessage(userMessage, {
+            deepThinkingMode: true,
+            searchBeforePlanning: false
+          });
+          
+          console.log('Retry completed successfully');
+        } else {
+          console.log('No valid user message found for retry');
+        }
+      } else {
+        console.log('No workflow message found for retry');
+      }
+    } catch (error) {
+      console.error('Error in handleReportRetry:', error);
+      // 确保在出错时重置responding状态
+      const { setResponding } = await import('~/core/store');
+      setResponding(false);
     }
   };
 
@@ -270,7 +246,7 @@ function ReportActions({ reportContent }: { reportContent: string }) {
       </button>
       
       <button
-        onClick={handleRetry}
+        onClick={handleReportRetry}
         className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-xs font-medium bg-green-100 hover:bg-green-200 text-green-700"
         title="重新生成整个回复"
       >
@@ -326,12 +302,12 @@ function StepContentView({ step, stepIndex, isLast }: { step: WorkflowStep; step
       </div>
       {isExpanded && (
         <div className="ml-6 sm:ml-11 space-y-2 sm:space-y-4 max-w-full overflow-hidden">
-          {filteredTasks.map((task) =>
+          {filteredTasks.map((task, taskIndex) =>
             task.type === "thinking" &&
             step.agentName === "planner" ? (
-              <PlanTaskView key={task.id} task={task} />
+              <PlanTaskView key={`${step.id}-${task.id}-${taskIndex}`} task={task} />
             ) : (
-              <div key={task.id} className="">
+              <div key={`${step.id}-${task.id}-${taskIndex}`} className="">
                 {task.type === "thinking" ? (
                   <div className="bg-gray-50 rounded-lg p-2 sm:p-4 border-l-2 sm:border-l-4 border-gray-300">
                     <Markdown

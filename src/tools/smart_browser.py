@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
-from src.llms.llm import vl_llm
+from src.llms.llm import basic_llm
 from src.tools.browser import create_browser_config
 from src.tools.proxy_manager import ProxyManager
 from src.config import BROWSER_HISTORY_DIR
@@ -135,7 +135,7 @@ class SmartBrowserTool(BaseTool):
             # 创建浏览器代理
             self._agent = BrowserAgent(
                 task=instruction,
-                llm=vl_llm,
+                llm=basic_llm,
                 browser=browser_instance,
                 generate_gif=generated_gif_path,
             )
@@ -166,14 +166,14 @@ class SmartBrowserTool(BaseTool):
             
             finally:
                 # 清理浏览器实例
-                if self._agent and self._agent.browser:
-                    try:
-                        cleanup_loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(cleanup_loop)
-                        cleanup_loop.run_until_complete(self._agent.browser.close())
-                        cleanup_loop.close()
-                    except Exception as cleanup_error:
-                        logger.warning(f"浏览器清理时出现警告: {cleanup_error}")
+                # if self._agent and self._agent.browser:
+                #     try:
+                #         cleanup_loop = asyncio.new_event_loop()
+                #         asyncio.set_event_loop(cleanup_loop)
+                #         cleanup_loop.run_until_complete(self._agent.browser.close())
+                #         cleanup_loop.close()
+                #     except Exception as cleanup_error:
+                #         logger.warning(f"浏览器清理时出现警告: {cleanup_error}")
                 loop.close()
         
         except Exception as e:
@@ -189,7 +189,7 @@ class SmartBrowserTool(BaseTool):
                     
                     self._agent = BrowserAgent(
                         task=instruction,
-                        llm=vl_llm,
+                        llm=basic_llm,
                         browser=browser_instance,
                         generate_gif=generated_gif_path,
                     )
@@ -218,14 +218,14 @@ class SmartBrowserTool(BaseTool):
                                 )
                             )
                     finally:
-                        if self._agent and self._agent.browser:
-                            try:
-                                cleanup_loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(cleanup_loop)
-                                cleanup_loop.run_until_complete(self._agent.browser.close())
-                                cleanup_loop.close()
-                            except Exception as cleanup_error:
-                                logger.warning(f"浏览器清理时出现警告: {cleanup_error}")
+                        # if self._agent and self._agent.browser:
+                        #     try:
+                        #         cleanup_loop = asyncio.new_event_loop()
+                        #         asyncio.set_event_loop(cleanup_loop)
+                        #         cleanup_loop.run_until_complete(self._agent.browser.close())
+                        #         cleanup_loop.close()
+                        #     except Exception as cleanup_error:
+                        #         logger.warning(f"浏览器清理时出现警告: {cleanup_error}")
                         loop.close()
                 
                 except Exception as fallback_error:
