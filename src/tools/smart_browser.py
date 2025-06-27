@@ -3,13 +3,14 @@ import json
 import os
 import asyncio
 import uuid
+import logging
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
-from src.llms.llm import basic_llm
+from src.llms.llm import vl_llm
 from src.tools.browser import create_browser_config
 from src.tools.proxy_manager import ProxyManager
 from src.config import BROWSER_HISTORY_DIR
@@ -35,9 +36,12 @@ class SmartBrowserTool(BaseTool):
     # 添加字段类型注解
     _agent: Optional['BrowserAgent'] = None
     browser: Optional['Browser'] = None
+    _abort_event: Optional[asyncio.Event] = None
+    _current_task: Optional[asyncio.Task] = None
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._abort_event = asyncio.Event()
     
     def _extract_url_from_instruction(self, instruction: str) -> Optional[str]:
         """从指令中提取URL"""
@@ -109,6 +113,9 @@ class SmartBrowserTool(BaseTool):
         proxy_info = {}
         
         try:
+            # 重置中止事件
+            self._abort_event.clear()
+            
             # 创建智能浏览器配置
             browser_config = self._create_smart_browser_config(user_id=user_id, target_url=target_url)
             
@@ -135,7 +142,7 @@ class SmartBrowserTool(BaseTool):
             # 创建浏览器代理
             self._agent = BrowserAgent(
                 task=instruction,
-                llm=basic_llm,
+                llm=vl_llm,
                 browser=browser_instance,
                 generate_gif=generated_gif_path,
             )
@@ -145,7 +152,49 @@ class SmartBrowserTool(BaseTool):
             asyncio.set_event_loop(loop)
             
             try:
-                result = loop.run_until_complete(self._agent.run())
+                # 创建可中止的任务
+                async def run_with_abort_check():
+                    # 创建浏览器任务
+                    browser_task = asyncio.create_task(self._agent.run())
+                    self._current_task = browser_task
+                    
+                    # 创建中止检查任务
+                    abort_task = asyncio.create_task(self._abort_event.wait())
+                    
+                    try:
+                        # 等待任务完成或中止信号
+                        done, pending = await asyncio.wait(
+                            [browser_task, abort_task],
+                            return_when=asyncio.FIRST_COMPLETED
+                        )
+                        
+                        # 取消未完成的任务
+                        for task in pending:
+                            task.cancel()
+                            try:
+                                await task
+                            except asyncio.CancelledError:
+                                pass
+                        
+                        # 检查是否被中止
+                        if abort_task in done:
+                            logger.info("智能浏览器任务被中止")
+                            # 确保浏览器任务被取消
+                            if not browser_task.done():
+                                browser_task.cancel()
+                                try:
+                                    await browser_task
+                                except asyncio.CancelledError:
+                                    pass
+                            raise asyncio.CancelledError("任务被用户中止")
+                        
+                        # 返回浏览器任务结果
+                        return browser_task.result()
+                    
+                    finally:
+                        self._current_task = None
+                
+                result = loop.run_until_complete(run_with_abort_check())
                 
                 if isinstance(result, AgentHistoryList):
                     return json.dumps(
@@ -163,6 +212,15 @@ class SmartBrowserTool(BaseTool):
                             proxy_info
                         )
                     )
+            
+            except asyncio.CancelledError:
+                logger.info("智能浏览器任务被中止")
+                return json.dumps({
+                    "result_content": "浏览器任务已被用户中止",
+                    "generated_gif_path": generated_gif_path,
+                    "error_type": "cancelled",
+                    "proxy_info": proxy_info
+                })
             
             finally:
                 # 清理浏览器实例
@@ -189,7 +247,7 @@ class SmartBrowserTool(BaseTool):
                     
                     self._agent = BrowserAgent(
                         task=instruction,
-                        llm=basic_llm,
+                        llm=vl_llm,
                         browser=browser_instance,
                         generate_gif=generated_gif_path,
                     )
@@ -217,6 +275,15 @@ class SmartBrowserTool(BaseTool):
                                     proxy_info
                                 )
                             )
+                    except asyncio.CancelledError:
+                        logger.info("智能浏览器直连模式任务被中止")
+                        return json.dumps({
+                            "result_content": "浏览器任务已被用户中止",
+                            "generated_gif_path": generated_gif_path,
+                            "error_type": "cancelled",
+                            "proxy_info": proxy_info
+                        })
+                    
                     finally:
                         # if self._agent and self._agent.browser:
                         #     try:
@@ -290,6 +357,35 @@ class SmartBrowserTool(BaseTool):
                 "message": f"测试失败: {str(e)}",
                 "target_url": target_url
             }
+    
+    async def terminate(self):
+        """中止智能浏览器任务"""
+        try:
+            # 设置中止事件
+            if self._abort_event:
+                self._abort_event.set()
+                logger.info("智能浏览器中止信号已发送")
+            
+            # 如果有正在运行的任务，取消它
+            if self._current_task and not self._current_task.done():
+                self._current_task.cancel()
+                logger.info("智能浏览器当前任务已取消")
+            
+            # 关闭浏览器实例
+            if self._agent and self._agent.browser:
+                try:
+                    await self._agent.browser.close()
+                    logger.info("智能浏览器实例已关闭")
+                except Exception as e:
+                    logger.warning(f"关闭智能浏览器时出现警告: {str(e)}")
+            
+            # 清理引用
+            self._agent = None
+            self.browser = None
+            self._current_task = None
+            
+        except Exception as e:
+            logger.error(f"智能浏览器终止时出现错误: {str(e)}")
 
 # 创建工具实例
 smart_browser_tool = SmartBrowserTool()

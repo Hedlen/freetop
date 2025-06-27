@@ -9,7 +9,7 @@ from typing import Optional, ClassVar, Type
 from langchain.tools import BaseTool
 from browser_use import AgentHistoryList, Browser, BrowserConfig
 from browser_use import Agent as BrowserAgent
-from src.llms.llm import basic_llm
+from src.llms.llm import vl_llm
 from src.tools.decorators import create_logged_tool
 from src.config import (
     CHROME_INSTANCE_PATH,
@@ -180,7 +180,7 @@ class BrowserTool(BaseTool):
         try:
             self._agent = BrowserAgent(
                 task=instruction,
-                llm=basic_llm,
+                llm=vl_llm,
                 browser=browser_instance,
                 generate_gif=generated_gif_path,
             )
@@ -272,7 +272,7 @@ class BrowserTool(BaseTool):
         
         self._agent = BrowserAgent(
             task=instruction,
-            llm=basic_llm,
+            llm=vl_llm,
             browser=browser_instance,
             generate_gif=generated_gif_path,  # Will be set per request
         )

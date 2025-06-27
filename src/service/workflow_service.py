@@ -5,6 +5,7 @@ import asyncio
 from src.config import TEAM_MEMBER_CONFIGRATIONS, TEAM_MEMBERS
 from src.graph import build_graph
 from src.tools.browser import browser_tool
+from src.tools.smart_browser import smart_browser_tool
 from langchain_community.adapters.openai import convert_message_to_dict
 import uuid
 
@@ -30,6 +31,16 @@ MAX_CACHE_SIZE = 3
 
 # Global variable to track current browser tool instance
 current_browser_tool: Optional[browser_tool] = None
+current_smart_browser_tool: Optional = None
+
+def set_current_smart_browser_tool(tool_instance):
+    """设置当前的智能浏览器工具实例"""
+    global current_smart_browser_tool
+    current_smart_browser_tool = tool_instance
+
+def get_current_smart_browser_tool():
+    """获取当前的智能浏览器工具实例"""
+    return current_smart_browser_tool
 
 
 async def run_agent_workflow(
@@ -116,6 +127,8 @@ async def run_agent_workflow(
                 logger.info("Abort signal received, terminating workflow")
                 if current_browser_tool:
                     await current_browser_tool.terminate()
+                if current_smart_browser_tool:
+                    await current_smart_browser_tool.terminate()
                 raise asyncio.CancelledError("Workflow aborted by user request")
             kind = event.get("event")
             data = event.get("data")
@@ -253,6 +266,11 @@ async def run_agent_workflow(
                 await current_browser_tool.terminate()
             except Exception as terminate_error:
                 logger.warning(f"终止浏览器工具时出现警告: {terminate_error}")
+        if current_smart_browser_tool:
+            try:
+                await current_smart_browser_tool.terminate()
+            except Exception as terminate_error:
+                logger.warning(f"终止智能浏览器工具时出现警告: {terminate_error}")
         raise
     finally:
         # 确保在工作流结束时清理浏览器实例
@@ -265,6 +283,16 @@ async def run_agent_workflow(
                 logger.warning(f"清理浏览器工具时出现警告: {cleanup_error}")
             finally:
                 current_browser_tool = None
+        
+        if current_smart_browser_tool:
+            try:
+                # 调用terminate方法进行完整清理
+                await current_smart_browser_tool.terminate()
+                logger.info("智能浏览器工具已完全清理")
+            except Exception as cleanup_error:
+                logger.warning(f"清理智能浏览器工具时出现警告: {cleanup_error}")
+            finally:
+                current_smart_browser_tool = None
 
     if is_workflow_triggered:
         # TODO: remove messages attributes after Frontend being compatible with final_session_state event.

@@ -17,6 +17,7 @@ import { sidePanelEventManager } from "../_components/ToolCallView";
 
 import { SessionHistoryModal } from "../_components/SessionHistoryModal";
 import { LoginModal } from "../_components/LoginModal";
+import { MobileSidebar } from "../_components/MobileSidebar";
 // LoginModal现在在AppHeader中管理
 import { type ToolCallTask } from "~/core/workflow";
 
@@ -194,8 +195,8 @@ export default function HomePage() {
       {/* 背景装饰 */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-purple-50/30"></div>
       
-      {/* 左侧科幻按钮 */}
-      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-50" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+      {/* 桌面端左侧科幻按钮 - 只在中大屏幕显示 */}
+      <div className="hidden md:flex fixed left-6 top-1/2 -translate-y-1/2 z-50 flex-col gap-6">
         <button
           onClick={handleNewSession}
           className="group relative w-14 h-14 bg-gradient-to-br from-cyan-400/80 to-blue-500/80 backdrop-blur-md rounded-full border border-cyan-300/50 shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-110"
@@ -225,9 +226,13 @@ export default function HomePage() {
             历史记录
           </div>
         </button>
-        
-
       </div>
+      
+      {/* 移动端侧边栏 */}
+      <MobileSidebar 
+        onNewSession={handleNewSession}
+        onShowHistory={() => setShowSessionHistory(true)}
+      />
 
       <SlidingLayout
         isOpen={sidePanelOpen}

@@ -22,3 +22,4 @@ conf.yaml
 node_modules/
 
 .idea/
+freetop.db
