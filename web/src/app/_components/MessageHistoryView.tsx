@@ -112,11 +112,12 @@ function MessageView({ message }: { message: Message }) {
           const newMessages = messages.filter(m => m.id !== message.id);
           useStore.setState({ messages: newMessages });
           
+          // 从localStorage读取当前的深度思考模式配置
+          const { getInputConfigSync } = await import('~/core/utils/config');
+          const config = getInputConfigSync();
+          
           // 使用store中的sendMessage函数重新生成回复
-          await sendMessage(userMessage, {
-            deepThinkingMode: false,
-            searchBeforePlanning: false
-          });
+          await sendMessage(userMessage, config);
         }
       }
     }

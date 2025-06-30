@@ -192,10 +192,12 @@ function ReportActions({ reportContent }: { reportContent: string }) {
         
           // 使用sendMessage重新生成回复，这样可以确保状态管理的一致性
           console.log('Sending message for retry...');
-          await sendMessage(userMessage, {
-            deepThinkingMode: true,
-            searchBeforePlanning: false
-          });
+        
+        // 从localStorage读取当前的深度思考模式配置
+        const { getInputConfigSync } = await import('~/core/utils/config');
+        const config = getInputConfigSync();
+        
+        await sendMessage(userMessage, config);
           
           console.log('Retry completed successfully');
         } else {

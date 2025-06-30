@@ -51,6 +51,7 @@ async def run_agent_workflow(
     team_members: Optional[list] = None,
     abort_event: Optional[asyncio.Event] = None,
     user_id: Optional[int] = None,
+    request_headers: Optional[dict] = None,
 ):
     """Run the agent workflow to process and respond to user input messages.
 
@@ -92,19 +93,26 @@ async def run_agent_workflow(
     streaming_llm_agents = [*team_members, "planner", "coordinator"]
 
     # Reset coordinator cache at the start of each workflow
-    global current_browser_tool
+    global current_browser_tool, current_smart_browser_tool
     coordinator_cache = []
     
     # Create browser tool with user-specific configuration
     if user_id:
         from src.tools.browser import create_browser_config, BrowserTool
         from src.tools.browser import Browser
-        user_browser_config = create_browser_config(user_id)
+        from src.tools.smart_browser import SmartBrowserTool
+        # 传递request_headers以支持移动端检测
+        user_browser_config = create_browser_config(user_id, request_headers=request_headers)
         user_browser = Browser(config=user_browser_config)
         current_browser_tool = BrowserTool()
         current_browser_tool.browser = user_browser
+        
+        # Create smart browser tool with user-specific configuration
+        current_smart_browser_tool = SmartBrowserTool()
+        current_smart_browser_tool.browser = user_browser
     else:
         current_browser_tool = browser_tool
+        current_smart_browser_tool = smart_browser_tool
     is_handoff_case = False
     is_workflow_triggered = False
 

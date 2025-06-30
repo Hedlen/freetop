@@ -3,6 +3,7 @@ import { type KeyboardEvent, useCallback, useEffect, useState, useRef } from "re
 
 import { Atom } from "~/core/icons";
 import { cn } from "~/core/utils";
+import { useInputConfig } from "~/core/hooks/useInputConfig";
 
 
 export function InputBox({
@@ -23,42 +24,21 @@ export function InputBox({
 }) {
   const [message, setMessage] = useState("");
 
-  const [deepThinkingMode, setDeepThinkMode] = useState(false);
-  const [searchBeforePlanning, setSearchBeforePlanning] = useState(false);
   const [imeStatus, setImeStatus] = useState<"active" | "inactive">("inactive");
   const [isClient, setIsClient] = useState(false);
+  const { 
+    config, 
+    loading: configLoading, 
+    syncing, 
+    toggleDeepThinking, 
+    toggleSearchPlanning 
+  } = useInputConfig();
 
-  
-  const saveConfig = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(
-        "langmanus.config.inputbox",
-        JSON.stringify({ deepThinkingMode, searchBeforePlanning }),
-      );
-    }
-  }, [deepThinkingMode, searchBeforePlanning]);
-  
+  const { deepThinkingMode, searchBeforePlanning } = config;
+
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') {
-      const config = localStorage.getItem("langmanus.config.inputbox");
-      if (config) {
-        try {
-          const { deepThinkingMode, searchBeforePlanning } = JSON.parse(config);
-          setDeepThinkMode(deepThinkingMode);
-          setSearchBeforePlanning(searchBeforePlanning);
-        } catch (error) {
-          console.warn('Failed to parse config from localStorage:', error);
-        }
-      }
-    }
   }, []);
-  
-  useEffect(() => {
-    if (isClient) {
-      saveConfig();
-    }
-  }, [deepThinkingMode, searchBeforePlanning, saveConfig, isClient]);
 
 
   const handleSendMessage = useCallback(() => {
@@ -129,11 +109,13 @@ export function InputBox({
                 : "border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700",
             )}
             onClick={() => {
-              setDeepThinkMode(!deepThinkingMode);
+              toggleDeepThinking();
             }}
+            disabled={configLoading}
           >
             <Atom className={cn("h-4 w-4", deepThinkingMode ? "text-blue-600" : "text-gray-600")} />
             <span>Deep Think</span>
+            {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>}
           </button>
           <button
             className={cn(
@@ -143,13 +125,15 @@ export function InputBox({
                 : "border-gray-300 bg-white text-gray-700 hover:bg-blue-100 hover:border-blue-400",
             )}
             onClick={() => {
-              setSearchBeforePlanning(!searchBeforePlanning);
-            }}
+                toggleSearchPlanning();
+              }}
+              disabled={configLoading}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9m0 9c-5 0-9-4-9-9s4-9 9-9" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span>Search</span>
+            <span>Search First</span>
+            {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>}
           </button>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">

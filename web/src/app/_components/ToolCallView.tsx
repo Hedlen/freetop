@@ -8,7 +8,7 @@ import {
   UpOutlined,
 } from "@ant-design/icons";
 import { LRUCache } from "lru-cache";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import docco from "react-syntax-highlighter/dist/styles/docco";
 
@@ -47,6 +47,43 @@ export function ToolCallView({ task }: { task: ToolCallTask }) {
   const handleDetailView = () => {
     sidePanelEventManager.emit({ type: 'open', task });
   };
+
+  // 当浏览器工具被调用时，触发浏览器工具事件
+  useEffect(() => {
+    if (task.payload.toolName === 'browser' || task.payload.toolName === 'smart_browser') {
+      console.log('ToolCallView: 检测到浏览器工具', {
+        taskId: task.id,
+        toolName: task.payload.toolName,
+        state: task.state,
+        hasOutput: !!task.payload.output
+      });
+      
+      // 触发浏览器工具调用事件
+      const browserToolCallEvent = new CustomEvent('browser-tool-call', {
+        detail: {
+          toolCallId: task.id,
+          toolName: task.payload.toolName,
+          toolInput: task.payload.input,
+          params: task.payload.input
+        }
+      });
+      console.log('ToolCallView: 触发 browser-tool-call 事件', browserToolCallEvent.detail);
+      window.dispatchEvent(browserToolCallEvent);
+
+      // 如果任务已完成，触发结果事件
+      if (task.state === 'completed' && task.payload.output) {
+        const browserToolResultEvent = new CustomEvent('browser-tool-result', {
+          detail: {
+            toolCallId: task.id,
+            toolResult: task.payload.output,
+            result: task.payload.output
+          }
+        });
+        console.log('ToolCallView: 触发 browser-tool-result 事件', browserToolResultEvent.detail);
+        window.dispatchEvent(browserToolResultEvent);
+      }
+    }
+  }, [task.id, task.payload.toolName, task.state, task.payload.output]);
 
   const renderToolView = () => {
     if (task.payload.toolName === "tavily_search") {

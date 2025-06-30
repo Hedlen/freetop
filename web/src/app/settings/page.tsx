@@ -129,6 +129,34 @@ const modelOptions: Record<string, string[]> = {
   local: ['llama2', 'codellama', 'mistral']
 };
 
+// 刷新Token
+async function refreshToken(): Promise<boolean> {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const response = await fetch('http://localhost:8000/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('auth_token', data.token);
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    return false;
+  }
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
@@ -171,6 +199,19 @@ export default function SettingsPage() {
                setSyncStatus('synced');
                return;
              }
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.detail?.includes('已过期')) {
+              // Token过期，尝试刷新
+              const refreshed = await refreshToken();
+              if (refreshed) {
+                // 刷新成功，重新加载设置
+                return loadSettings();
+              }
+            }
+            // Token无效或刷新失败，清除token
+            localStorage.removeItem('auth_token');
+            setSyncStatus('error');
           }
         } catch (syncError) {
           console.error('从云端加载设置失败:', syncError);
@@ -217,6 +258,20 @@ export default function SettingsPage() {
                setSyncStatus('local');
                setMessage('设置已保存到本地，但云端同步失败');
              }
+           } else if (response.status === 401) {
+             const errorData = await response.json();
+             if (errorData.detail?.includes('已过期')) {
+               // Token过期，尝试刷新
+               const refreshed = await refreshToken();
+               if (refreshed) {
+                 // 刷新成功，重新保存设置
+                 return saveSettings();
+               }
+             }
+             // Token无效或刷新失败
+             localStorage.removeItem('auth_token');
+             setSyncStatus('local');
+             setMessage('登录已过期，设置已保存到本地');
            } else {
              setSyncStatus('local');
              setMessage('设置已保存到本地，但云端同步失败');
@@ -273,6 +328,20 @@ export default function SettingsPage() {
           setSyncStatus('error');
           setMessage('同步失败：' + result.message);
         }
+      } else if (response.status === 401) {
+        const errorData = await response.json();
+        if (errorData.detail?.includes('已过期')) {
+          // Token过期，尝试刷新
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            // 刷新成功，重新同步
+            return syncToCloud();
+          }
+        }
+        // Token无效或刷新失败
+        localStorage.removeItem('auth_token');
+        setSyncStatus('error');
+        setMessage('登录已过期，请重新登录后同步');
       } else {
         setSyncStatus('error');
         setMessage('同步失败，请稍后重试');

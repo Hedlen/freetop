@@ -50,6 +50,9 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           localStorage.setItem('auth_token', result.token);
           localStorage.setItem('user_info', JSON.stringify(result.user));
           
+          // 触发自定义事件，通知所有组件更新登录状态
+          window.dispatchEvent(new CustomEvent('loginStateChanged'));
+          
           // 调用父组件的登录回调
           if (onLogin) {
             onLogin(username, password);
@@ -96,6 +99,9 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           // 注册成功，自动登录
           localStorage.setItem('auth_token', result.token);
           localStorage.setItem('user_info', JSON.stringify(result.user));
+          
+          // 触发自定义事件，通知所有组件更新登录状态
+          window.dispatchEvent(new CustomEvent('loginStateChanged'));
           
           // 调用父组件的登录回调
           if (onLogin) {

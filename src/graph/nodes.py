@@ -71,7 +71,19 @@ def code_node(state: State) -> Command[Literal["supervisor"]]:
 def browser_node(state: State) -> Command[Literal["supervisor"]]:
     """Node for the browser agent that performs web browsing tasks."""
     logger.info("Browser agent starting task")
-    result = browser_agent.invoke(state)
+    
+    # 获取用户特定的browser_tool
+    from src.service.workflow_service import current_browser_tool
+    if current_browser_tool:
+        # 使用用户特定的browser_tool创建临时agent
+        from src.agents.agents import create_agent
+        user_id = state.get("user_id")
+        temp_browser_agent = create_agent("browser", [current_browser_tool], "browser", user_id)
+        result = temp_browser_agent.invoke(state)
+    else:
+        # 回退到默认的browser_agent
+        result = browser_agent.invoke(state)
+    
     logger.info("Browser agent completed task")
     response_content = result["messages"][-1].content
     # 尝试修复可能的JSON输出
@@ -99,8 +111,9 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     for message in messages:
         if isinstance(message, BaseMessage) and message.name in TEAM_MEMBERS:
             message.content = RESPONSE_FORMAT.format(message.name, message.content)
+    user_id = state.get("user_id")
     response = (
-        get_llm_by_type(AGENT_LLM_MAP["supervisor"])
+        get_llm_by_type(AGENT_LLM_MAP["supervisor"], user_id)
         .with_structured_output(schema=Router, method="json_mode")
         .invoke(messages)
     )
@@ -122,9 +135,10 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
     logger.info("Planner generating full plan")
     messages = apply_prompt_template("planner", state)
     # whether to enable deep thinking mode
-    llm = get_llm_by_type("basic")
+    user_id = state.get("user_id")
+    llm = get_llm_by_type("basic", user_id)
     if state.get("deep_thinking_mode"):
-        llm = get_llm_by_type("reasoning")
+        llm = get_llm_by_type("reasoning", user_id)
     if state.get("search_before_planning"):
         # 从state中获取user_id，如果没有则为None
         user_id = state.get("user_id")
@@ -172,7 +186,8 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking.")
     messages = apply_prompt_template("coordinator", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
+    user_id = state.get("user_id")
+    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"], user_id).invoke(messages)
     logger.debug(f"Current state messages: {state['messages']}")
     response_content = response.content
     # 尝试修复可能的JSON输出
@@ -195,7 +210,8 @@ def reporter_node(state: State) -> Command[Literal["supervisor"]]:
     """Reporter node that write a final report."""
     logger.info("Reporter write final report")
     messages = apply_prompt_template("reporter", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["reporter"]).invoke(messages)
+    user_id = state.get("user_id")
+    response = get_llm_by_type(AGENT_LLM_MAP["reporter"], user_id).invoke(messages)
     logger.debug(f"Current state messages: {state['messages']}")
     response_content = response.content
     # 尝试修复可能的JSON输出

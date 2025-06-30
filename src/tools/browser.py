@@ -32,11 +32,61 @@ import asyncio
 # Configure logging
 logger = logging.getLogger(__name__)
 
+def is_mobile_request(request_headers: dict = None):
+    """检测是否为移动端请求"""
+    try:
+        # 如果没有传入请求头，尝试从上下文获取
+        if request_headers is None:
+            logger.debug("无请求头信息，判定为桌面端")
+            return False
+            
+        user_agent = request_headers.get('user-agent', '').lower()
+        
+        if not user_agent:
+            logger.debug("User-Agent为空，判定为桌面端")
+            return False
+        
+        # 移动端关键词
+        mobile_keywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone', 'opera mini']
+        
+        # 桌面端排除关键词（避免误判）
+        desktop_keywords = ['windows nt', 'macintosh', 'linux x86_64', 'x11']
+        
+        # 先检查桌面端关键词
+        for keyword in desktop_keywords:
+            if keyword in user_agent:
+                logger.debug(f"检测到桌面端关键词: {keyword}")
+                return False
+        
+        # 再检查移动端关键词
+        for keyword in mobile_keywords:
+            if keyword in user_agent:
+                logger.info(f"检测到移动端关键词: {keyword}, User-Agent: {user_agent[:100]}...")
+                return True
+        
+        logger.debug(f"未检测到移动端特征，判定为桌面端: {user_agent[:100]}...")
+        return False
+        
+    except Exception as e:
+        logger.warning(f"移动端检测异常: {e}")
+        # 如果无法获取请求信息，默认为非移动端
+        return False
+
 # 使用 Chromium 而不是 Chrome，避免与用户本地 Chrome 冲突
-def create_browser_config(user_id: int = None, target_url: str = None):
+def create_browser_config(user_id: int = None, target_url: str = None, request_headers: dict = None):
     """创建浏览器配置，支持智能代理策略"""
+    # 检测是否为移动端请求，移动端强制使用无头模式
+    is_mobile = is_mobile_request(request_headers)
+    # 初始化为None，后续按优先级设置
+    headless_mode = None
+    
+    # 移动端检测日志将在后续的headless设置中处理
+    
+    # 默认窗口大小
+    window_size = '1920x1080'
+    
     config = BrowserConfig(
-        headless=CHROME_HEADLESS,
+        headless=headless_mode,  # 移动端强制无头模式，桌面端根据配置决定
     )
     
     # 优先级：前端用户设置 > 环境变量 > 默认值
@@ -60,6 +110,21 @@ def create_browser_config(user_id: int = None, target_url: str = None):
                 browser_settings = user_settings_result['settings'].get('browser', {})
                 if browser_settings:
                     chrome_path = browser_settings.get('chrome_path')
+                    # 只有非移动端才允许用户自定义headless设置
+                    if not is_mobile:
+                        user_headless = browser_settings.get('headless')
+                        logger.info(f"获取到用户headless设置: {user_headless} (类型: {type(user_headless)})")
+                        if user_headless is not None:
+                            headless_mode = user_headless
+                            logger.info(f"使用用户设置的headless模式: {headless_mode}")
+                        else:
+                            logger.info("用户headless设置为None，将使用环境变量")
+                    else:
+                        logger.info("移动端请求，忽略用户headless设置")
+                    
+                    # 获取窗口大小设置
+                    window_size = browser_settings.get('window_size', '1920x1080')
+                    
                     proxy_strategy = browser_settings.get('proxy_strategy', proxy_strategy)
                     proxy_server = browser_settings.get('proxy_server')
                     proxy_type = browser_settings.get('proxy_type', proxy_type)
@@ -73,8 +138,42 @@ def create_browser_config(user_id: int = None, target_url: str = None):
         except Exception as e:
             logger.warning(f"获取用户设置失败，将使用环境变量配置: {e}")
     
-    # 2. 如果前端没有设置，仅对代理使用环境变量，浏览器路径使用默认值
-    # chrome_path保持None，使用默认的Playwright内置Chromium
+    # 设置headless模式的优先级：移动端强制无头 > 用户设置 > 环境变量 > 默认值
+    logger.info(f"=== HEADLESS配置调试信息 ===")
+    logger.info(f"user_id: {user_id}")
+    logger.info(f"is_mobile: {is_mobile}")
+    logger.info(f"用户设置中的headless: {user_settings.get('browser', {}).get('headless') if user_settings else 'None'}")
+    logger.info(f"环境变量CHROME_HEADLESS: {os.getenv('CHROME_HEADLESS', 'Not set')}")
+    logger.info(f"headless_mode初始值: {headless_mode}")
+    
+    if is_mobile:
+        headless_mode = True
+        logger.info("✓ 移动端检测 -> 强制headless=True")
+    elif headless_mode is not None:
+        logger.info(f"✓ 用户设置 -> headless={headless_mode}")
+    else:
+        # 如果用户没有设置，使用环境变量
+        headless_mode = CHROME_HEADLESS
+        logger.info(f"✓ 环境变量/默认值 -> headless={headless_mode}")
+    
+    logger.info(f"最终headless_mode: {headless_mode} (类型: {type(headless_mode)})")
+    logger.info(f"=== HEADLESS配置调试结束 ===")
+    
+    # 更新config对象的headless设置
+    config.headless = headless_mode
+    
+    # 解析窗口大小并存储到config中（用于后续创建browser时使用）
+    try:
+        width, height = map(int, window_size.split('x'))
+        config.viewport = {'width': width, 'height': height}
+        logger.info(f"设置窗口大小: {width}x{height}")
+    except (ValueError, AttributeError):
+        config.viewport = {'width': 1920, 'height': 1080}
+        logger.warning(f"窗口大小格式错误，使用默认值: 1920x1080")
+    
+    # 2. 如果前端没有设置，使用环境变量配置
+    if chrome_path is None:
+        chrome_path = CHROME_INSTANCE_PATH
     if proxy_server is None:
         proxy_server = CHROME_PROXY_SERVER
     if proxy_username is None:
@@ -165,7 +264,7 @@ class BrowserTool(BaseTool):
             "generated_gif_path": generated_gif_path,
         }
 
-    def _run(self, instruction: str, user_id: int = None) -> str:
+    def _run(self, instruction: str, user_id: int = None, request_headers: dict = None) -> str:
         generated_gif_path = f"{BROWSER_HISTORY_DIR}/{uuid.uuid4()}.gif"
         """Run the browser task synchronously."""
         
@@ -173,8 +272,8 @@ class BrowserTool(BaseTool):
         if hasattr(self, 'browser') and self.browser:
             browser_instance = self.browser
         else:
-            # 否则动态创建浏览器配置
-            browser_config = create_browser_config(user_id)
+            # 否则动态创建浏览器配置，传入请求头以检测移动端
+            browser_config = create_browser_config(user_id, request_headers=request_headers)
             browser_instance = Browser(config=browser_config)
         
         try:

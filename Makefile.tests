@@ -1,0 +1,90 @@
+# 测试相关的Makefile
+# 提供便捷的测试执行命令
+
+.PHONY: test test-unit test-integration test-functional test-e2e test-coverage test-html install-test-deps clean-test
+
+# 默认测试命令
+test:
+	@echo "🧪 运行所有测试..."
+	@python run_tests.py --type all
+
+# 单元测试
+test-unit:
+	@echo "🔬 运行单元测试..."
+	@python run_tests.py --type unit
+
+# 集成测试
+test-integration:
+	@echo "🔗 运行集成测试..."
+	@python run_tests.py --type integration
+
+# 功能测试
+test-functional:
+	@echo "⚙️ 运行功能测试..."
+	@python run_tests.py --type functional
+
+# 端到端测试
+test-e2e:
+	@echo "🌐 运行端到端测试..."
+	@python run_tests.py --type e2e
+
+# 快速测试（跳过慢速测试）
+test-fast:
+	@echo "⚡ 运行快速测试..."
+	@python run_tests.py --markers "not slow"
+
+# 浏览器相关测试
+test-browser:
+	@echo "🌐 运行浏览器相关测试..."
+	@python run_tests.py --markers "browser"
+
+# 生成覆盖率报告
+test-coverage:
+	@echo "📊 运行测试并生成覆盖率报告..."
+	@python run_tests.py --coverage
+
+# 生成HTML覆盖率报告
+test-html:
+	@echo "📊 生成HTML覆盖率报告..."
+	@python run_tests.py --html-coverage
+	@echo "📋 HTML报告已生成: htmlcov/index.html"
+
+# 安装测试依赖
+install-test-deps:
+	@echo "📦 安装测试依赖..."
+	@python run_tests.py --install-deps
+
+# 清理测试文件
+clean-test:
+	@echo "🧹 清理测试文件..."
+	@if exist htmlcov rmdir /s /q htmlcov
+	@if exist .coverage del .coverage
+	@if exist .pytest_cache rmdir /s /q .pytest_cache
+	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	@echo "✅ 测试文件清理完成"
+
+# 显示测试帮助
+test-help:
+	@echo "📋 可用的测试命令:"
+	@echo "  make test              - 运行所有测试"
+	@echo "  make test-unit         - 运行单元测试"
+	@echo "  make test-integration  - 运行集成测试"
+	@echo "  make test-functional   - 运行功能测试"
+	@echo "  make test-e2e          - 运行端到端测试"
+	@echo "  make test-fast         - 运行快速测试（跳过慢速）"
+	@echo "  make test-browser      - 运行浏览器相关测试"
+	@echo "  make test-coverage     - 生成覆盖率报告"
+	@echo "  make test-html         - 生成HTML覆盖率报告"
+	@echo "  make install-test-deps - 安装测试依赖"
+	@echo "  make clean-test        - 清理测试文件"
+	@echo "  make test-help         - 显示此帮助信息"
+
+# 持续集成测试
+test-ci:
+	@echo "🚀 运行CI测试流程..."
+	@python run_tests.py --type all --coverage --verbose
+
+# 开发者测试（快速反馈）
+test-dev:
+	@echo "👨‍💻 运行开发者测试..."
+	@python run_tests.py --type unit --verbose

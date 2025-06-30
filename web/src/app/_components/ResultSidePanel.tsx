@@ -139,14 +139,71 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
         break;
 
       case "browser":
-        if (task.payload.output?.content) {
+        if (task.payload.output) {
+          // 尝试解析GIF路径
+          let gifPath = '';
+          try {
+            const result = typeof task.payload.output === 'string' ? JSON.parse(task.payload.output) : task.payload.output;
+            gifPath = result.generated_gif_path || '';
+          } catch (e) {
+            console.warn('解析浏览器工具结果失败:', e);
+          }
+
           return (
             <div className="space-y-6">
-              <EnhancedBrowserView
-                url={task.payload.input?.url || ""}
-                content={task.payload.output.content}
-                onContentClick={(content, type) => setSelectedContent({ content, type })}
-              />
+              {/* 如果有GIF路径，显示GIF */}
+              {gifPath && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-3">浏览器操作录制</h4>
+                  <div className="relative group cursor-pointer" onClick={() => {
+                    const filename = gifPath.split('/').pop();
+                    setSelectedContent({ 
+                      content: `/api/browser_history/${filename}`, 
+                      type: 'gif' 
+                    });
+                  }}>
+                    <img
+                      src={`/api/browser_history/${gifPath.split('/').pop()}`}
+                      alt="浏览器操作录制"
+                      className="max-w-full h-auto rounded-lg shadow-lg transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        console.error('GIF加载失败:', {
+                          gifPath,
+                          filename: gifPath.split('/').pop(),
+                          url: `/api/browser_history/${gifPath.split('/').pop()}`
+                        });
+                      }}
+                    />
+                    {/* 悬停时显示的放大图标 */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white rounded-full p-3 shadow-lg">
+                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm text-gray-600">
+                    <div className="font-medium mb-1">执行的操作:</div>
+                    <div>{task.payload.input?.instruction || '浏览器操作'}</div>
+                    {task.payload.input?.url && (
+                      <div className="mt-1">
+                        <span className="font-medium">目标URL:</span> {task.payload.input.url}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* 如果有文本内容，也显示 */}
+              {task.payload.output?.content && (
+                <EnhancedBrowserView
+                  url={task.payload.input?.url || ""}
+                  content={task.payload.output.content}
+                  onContentClick={(content, type) => setSelectedContent({ content, type })}
+                />
+              )}
+              
               {mediaItems.length > 0 && (
                 <MediaGrid
                   mediaItems={mediaItems}

@@ -38,6 +38,10 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_info');
+    
+    // 触发自定义事件，通知所有组件更新登录状态
+    window.dispatchEvent(new CustomEvent('loginStateChanged'));
+    
     onLogout();
     setIsOpen(false);
   };

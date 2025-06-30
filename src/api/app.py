@@ -157,6 +157,7 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
                     request.team_members,
                     abort_event=abort_event,
                     user_id=user_id,
+                    request_headers=dict(req.headers),
                 ):
                     # Check if client is still connected or abort requested
                     if await req.is_disconnected():
@@ -294,9 +295,13 @@ async def abort_user_tasks(request: Request):
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]
             try:
-                payload = UserService.verify_token(token)
-                if payload:
-                    user_id = payload.get("user_id")
+                token_info = UserService.verify_token_with_details(token)
+                if token_info["valid"]:
+                    user_id = token_info["payload"].get("user_id")
+                elif token_info["error"] == "expired":
+                    return {"status": "error", "message": "认证令牌已过期，请刷新令牌"}
+                else:
+                    return {"status": "error", "message": "无效的认证令牌"}
             except Exception as e:
                 logger.warning(f"Invalid token in abort user tasks: {e}")
                 return {"status": "error", "message": "Invalid authorization token"}
@@ -383,16 +388,40 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="未提供认证令牌")
     
     token = authorization.split(" ")[1]
-    payload = UserService.verify_token(token)
+    token_info = UserService.verify_token_with_details(token)
     
-    if not payload:
-        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    if not token_info["valid"]:
+        if token_info["error"] == "expired":
+            raise HTTPException(status_code=401, detail="认证令牌已过期，请刷新令牌")
+        else:
+            raise HTTPException(status_code=401, detail="无效的认证令牌")
     
-    user = UserService.get_user_by_id(payload["user_id"])
+    user = UserService.get_user_by_id(token_info["payload"]["user_id"])
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     
     return {"success": True, "user": user}
+
+
+@app.post("/api/auth/refresh")
+async def refresh_token(authorization: str = Header(None)):
+    """
+    刷新JWT token
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未提供认证令牌")
+    
+    token = authorization.split(" ")[1]
+    result = UserService.refresh_token(token)
+    
+    if not result["success"]:
+        raise HTTPException(status_code=401, detail=result["message"])
+    
+    return {
+        "success": True,
+        "message": result["message"],
+        "token": result["token"]
+    }
 
 
 class UserUpdateRequest(BaseModel):
@@ -410,14 +439,17 @@ async def update_user_profile(request: UserUpdateRequest, authorization: str = H
         raise HTTPException(status_code=401, detail="未提供认证令牌")
     
     token = authorization.split(" ")[1]
-    payload = UserService.verify_token(token)
+    token_info = UserService.verify_token_with_details(token)
     
-    if not payload:
-        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    if not token_info["valid"]:
+        if token_info["error"] == "expired":
+            raise HTTPException(status_code=401, detail="认证令牌已过期，请刷新令牌")
+        else:
+            raise HTTPException(status_code=401, detail="无效的认证令牌")
     
     try:
         result = UserService.update_user_profile(
-            user_id=payload["user_id"],
+            user_id=token_info["payload"]["user_id"],
             username=request.username,
             email=request.email,
             avatar_url=request.avatar_url
@@ -443,11 +475,14 @@ async def get_user_settings(authorization: str = Header(None)):
             raise HTTPException(status_code=401, detail="未提供有效的认证令牌")
         
         token = authorization.split(" ")[1]
-        payload = UserService.verify_token(token)
-        if not payload:
-            raise HTTPException(status_code=401, detail="无效的认证令牌")
+        token_info = UserService.verify_token_with_details(token)
+        if not token_info["valid"]:
+            if token_info["error"] == "expired":
+                raise HTTPException(status_code=401, detail="认证令牌已过期，请刷新令牌")
+            else:
+                raise HTTPException(status_code=401, detail="无效的认证令牌")
         
-        user_id = payload.get("user_id")
+        user_id = token_info["payload"].get("user_id")
         result = UserService.get_user_settings(user_id)
         
         return SettingsResponse(**result)
@@ -466,11 +501,14 @@ async def save_user_settings(settings: dict, authorization: str = Header(None)):
             raise HTTPException(status_code=401, detail="未提供有效的认证令牌")
         
         token = authorization.split(" ")[1]
-        payload = UserService.verify_token(token)
-        if not payload:
-            raise HTTPException(status_code=401, detail="无效的认证令牌")
+        token_info = UserService.verify_token_with_details(token)
+        if not token_info["valid"]:
+            if token_info["error"] == "expired":
+                raise HTTPException(status_code=401, detail="认证令牌已过期，请刷新令牌")
+            else:
+                raise HTTPException(status_code=401, detail="无效的认证令牌")
         
-        user_id = payload.get("user_id")
+        user_id = token_info["payload"].get("user_id")
         result = UserService.save_user_settings(user_id, settings)
         
         return SettingsResponse(**result)

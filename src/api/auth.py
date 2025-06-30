@@ -10,12 +10,15 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="未提供认证令牌")
     
     token = authorization.split(" ")[1]
-    payload = UserService.verify_token(token)
+    token_info = UserService.verify_token_with_details(token)
     
-    if not payload:
-        raise HTTPException(status_code=401, detail="无效的认证令牌")
+    if not token_info["valid"]:
+        if token_info["error"] == "expired":
+            raise HTTPException(status_code=401, detail="认证令牌已过期，请刷新令牌")
+        else:
+            raise HTTPException(status_code=401, detail="无效的认证令牌")
     
-    user = UserService.get_user_by_id(payload["user_id"])
+    user = UserService.get_user_by_id(token_info["payload"]["user_id"])
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     

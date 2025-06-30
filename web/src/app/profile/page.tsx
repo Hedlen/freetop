@@ -12,6 +12,34 @@ interface User {
   created_at: string;
 }
 
+// 刷新Token
+async function refreshToken(): Promise<boolean> {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('auth_token', data.token);
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    return false;
+  }
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -63,16 +91,38 @@ export default function ProfilePage() {
         body: JSON.stringify(formData)
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        // 更新本地存储的用户信息
-        const updatedUser = { ...user, ...formData };
-        localStorage.setItem('user_info', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        setIsEditing(false);
-        setMessage('个人信息更新成功！');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // 更新本地存储的用户信息
+          const updatedUser = { ...user, ...formData };
+          localStorage.setItem('user_info', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+          setIsEditing(false);
+          setMessage('个人信息更新成功！');
+        } else {
+          setMessage(result.message || '更新失败，请重试');
+        }
+      } else if (response.status === 401) {
+        const errorData = await response.json();
+        if (errorData.detail?.includes('已过期')) {
+          // Token过期，尝试刷新
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            // 刷新成功，重新提交
+            return handleSubmit(e);
+          } else {
+            setMessage('登录已过期，请重新登录');
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login';
+          }
+        } else {
+          setMessage('认证失败，请重新登录');
+          localStorage.removeItem('auth_token');
+          window.location.href = '/login';
+        }
       } else {
+        const result = await response.json();
         setMessage(result.message || '更新失败，请重试');
       }
     } catch (error) {

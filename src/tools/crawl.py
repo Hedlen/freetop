@@ -37,6 +37,16 @@ def create_crawler_config(user_id: Optional[int] = None):
                     config['tavily_api_key'] = crawler_settings['tavily_api_key']
                 if crawler_settings.get('jina_api_key'):
                     config['jina_api_key'] = crawler_settings['jina_api_key']
+                if crawler_settings.get('timeout'):
+                    config['timeout'] = crawler_settings['timeout']
+                if crawler_settings.get('delay'):
+                    config['delay'] = crawler_settings['delay']
+                if crawler_settings.get('user_agent'):
+                    config['user_agent'] = crawler_settings['user_agent']
+                if crawler_settings.get('enable_javascript') is not None:
+                    config['enable_javascript'] = crawler_settings['enable_javascript']
+                if crawler_settings.get('max_search_results'):
+                    config['max_search_results'] = crawler_settings['max_search_results']
                 if browser_settings.get('proxy_server'):
                     config['proxy_server'] = browser_settings['proxy_server']
                 if browser_settings.get('proxy_username'):

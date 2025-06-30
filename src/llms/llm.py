@@ -7,6 +7,9 @@ from typing import Optional
 from litellm import LlmProviders
 from pathlib import Path
 from typing import Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.config import (
     REASONING_MODEL,
@@ -221,10 +224,36 @@ def _create_llm_use_conf(llm_type: LLMType, conf: Dict[str, Any]) -> ChatLiteLLM
 
 def get_llm_by_type(
     llm_type: LLMType,
+    user_id: str = None,
 ) -> ChatOpenAI | ChatDeepSeek | AzureChatOpenAI | ChatLiteLLM:
     """
     Get LLM instance by type. Returns cached instance if available.
     """
+    # 如果有用户ID，尝试使用用户配置，不使用缓存
+    if user_id:
+        try:
+            from src.services.user_service import UserService
+            user_settings_result = UserService.get_user_settings(user_id)
+            if user_settings_result.get('success') and user_settings_result.get('settings'):
+                llm_settings = user_settings_result['settings'].get('llm', {})
+                if llm_settings.get(llm_type):
+                    user_llm_config = llm_settings[llm_type]
+                    # 创建用户自定义的LLM配置
+                    llm_config = {
+                        'model': user_llm_config.get('model'),
+                        'api_key': user_llm_config.get('api_key'),
+                        'base_url': user_llm_config.get('base_url'),
+                        'temperature': user_llm_config.get('temperature', 0.7),
+                        'max_tokens': user_llm_config.get('max_tokens', 4096),
+                    }
+                    # 过滤掉None值
+                    llm_config = {k: v for k, v in llm_config.items() if v is not None}
+                    if llm_config.get('model'):
+                        return ChatLiteLLM(**llm_config)
+        except Exception as e:
+            logger.warning(f"获取用户LLM设置失败，将使用默认配置: {e}")
+    
+    # 使用缓存的默认配置
     if llm_type in _llm_cache:
         return _llm_cache[llm_type]
 

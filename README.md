@@ -2,14 +2,24 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![WeChat](https://img.shields.io/badge/WeChat-Langmanus-brightgreen?logo=wechat&logoColor=white)](./assets/wechat_community.jpg)
+[![WeChat](https://img.shields.io/badge/WeChat-FreeTop-brightgreen?logo=wechat&logoColor=white)](./assets/wechat_community.jpg)
 [![Discord Follow](https://dcbadge.vercel.app/api/server/m3MszDcn?style=flat)](https://discord.gg/m3MszDcn)
 
-[English](./README.md) | [简体中文](./README_zh.md) | [日本語](./README_ja.md)
+[English](./README.md) | [简体中文](./README_zh.md)
 
-> Come From Open Source, Back to Open Source
+> Inspired by LangManus, Built for Freedom
 
-FreeTop is a community-driven AI automation framework that builds upon the incredible work of the open source community. Our goal is to combine language models with specialized tools for tasks like web search, crawling, and Python code execution, while giving back to the community that made this possible.
+**FreeTop** is an enhanced AI automation framework inspired by the excellent work of [LangManus](https://github.com/langmanus/langmanus). Building upon LangManus's solid foundation, we've developed FreeTop with significant improvements in architecture, testing, and development experience. Our goal is to provide a more robust, maintainable, and developer-friendly multi-agent system for complex AI automation tasks.
+
+## 🙏 Acknowledgments to LangManus
+
+FreeTop is built upon the incredible foundation provided by [LangManus](https://github.com/langmanus/langmanus). We deeply appreciate the LangManus team's pioneering work in multi-agent AI automation. Their innovative approach to combining language models with specialized tools has inspired our development of FreeTop.
+
+**Key inspirations from LangManus:**
+- Multi-agent orchestration architecture
+- LLM integration patterns
+- Tool-based automation approach
+- Open source collaboration spirit
 
 ## Demo
 
@@ -111,64 +121,126 @@ This is an academically driven open-source project, developed by a group of form
 
 ## Architecture
 
-FreeTop implements a hierarchical multi-agent system where a supervisor coordinates specialized agents to accomplish complex tasks:
-
+FreeTop implements an enhanced hierarchical multi-agent system inspired by LangManus, with significant improvements in agent coordination, task delegation, and system reliability:
 
 ![FreeTop Architecture](./assets/architecture.png)
 
+### Enhanced Multi-Agent System
 
-The system consists of the following agents working together:
+Building upon LangManus's foundation, FreeTop features a refined agent architecture:
 
-1. **Coordinator** - The entry point that handles initial interactions and routes tasks
-2. **Planner** - Analyzes tasks and creates execution strategies
-3. **Supervisor** - Oversees and manages the execution of other agents
-4. **Researcher** - Gathers and analyzes information
-5. **Coder** - Handles code generation and modifications
-6. **Browser** - Performs web browsing and information retrieval
-7. **Reporter** - Generates reports and summaries of the workflow results
+1. **Coordinator** - Enhanced entry point with improved task routing and context management
+2. **Planner** - Advanced task analysis with better strategy formulation capabilities
+3. **Supervisor** - Intelligent oversight with improved error handling and recovery mechanisms
+4. **Researcher** - Enhanced information gathering with better source validation
+5. **Coder** - Improved code generation with better error detection and debugging
+6. **Browser** - Advanced web interaction with enhanced reliability and error recovery
+7. **Reporter** - Comprehensive reporting with better formatting and analysis
+
+### Key Architectural Improvements
+
+- **🔄 Enhanced Agent Communication**: Improved message passing and state management
+- **🛡️ Robust Error Handling**: Better error recovery and graceful degradation
+- **📊 Advanced Monitoring**: Comprehensive logging and performance tracking
+- **🧪 Comprehensive Testing**: Full test coverage with unit, integration, functional, and E2E tests
+- **⚙️ Flexible Configuration**: Enhanced configuration management with YAML support
 
 ## Features
 
-### Core Capabilities
+### 🚀 Enhanced Core Capabilities
 
-- 🤖 **LLM Integration**
-    - It supports the integration of most models through [litellm](https://docs.litellm.ai/docs/providers). 
-    - Support for open source models like Qwen
+- 🤖 **Advanced LLM Integration**
+    - Support for most models through [litellm](https://docs.litellm.ai/docs/providers)
+    - Enhanced support for open source models like Qwen
     - OpenAI-compatible API interface
-    - Multi-tier LLM system for different task complexities
+    - **NEW**: Three-tier LLM system (reasoning, basic, vision) for optimal task allocation
+    - **NEW**: Intelligent model selection based on task complexity
 
-### Tools and Integrations
+### 🔧 Enhanced Tools and Integrations
 
-- 🔍 **Search and Retrieval**
-    - Web search via Tavily API
-    - Neural search with Jina
-    - Advanced content extraction
+- 🔍 **Advanced Search and Retrieval**
+    - Web search via Tavily API with enhanced error handling
+    - Neural search with Jina and improved content processing
+    - **NEW**: Advanced content extraction with better parsing
+    - **NEW**: Enhanced web crawling with retry mechanisms
 
-### Development Features
+- 🌐 **Improved Browser Automation**
+    - Enhanced Playwright integration with better error recovery
+    - **NEW**: Smart browser session management
+    - **NEW**: Advanced interaction patterns and element detection
 
-- 🐍 **Python Integration**
-    - Built-in Python REPL
-    - Code execution environment
-    - Package management with uv
+### 🛠️ Enhanced Development Features
 
-### Workflow Management
+- 🐍 **Advanced Python Integration**
+    - Enhanced Python REPL with better error handling
+    - Improved code execution environment with sandboxing
+    - **NEW**: Advanced package management with uv
+    - **NEW**: Code quality checks and formatting integration
 
-- 📊 **Visualization and Control**
-    - Workflow graph visualization
-    - Multi-agent orchestration
-    - Task delegation and monitoring
+- 🧪 **Comprehensive Testing System**
+    - **NEW**: Complete test suite with 4-tier testing (unit, integration, functional, E2E)
+    - **NEW**: Automated test discovery and execution
+    - **NEW**: Coverage reporting and quality metrics
+    - **NEW**: CI/CD integration ready
 
-## Why FreeTop?
+### 📊 Enhanced Workflow Management
 
-We believe in the power of open source collaboration. This project wouldn't be possible without the amazing work of projects like:
+- 📈 **Advanced Visualization and Control**
+    - Enhanced workflow graph visualization
+    - Improved multi-agent orchestration with better coordination
+    - **NEW**: Advanced task delegation with priority management
+    - **NEW**: Real-time monitoring and performance tracking
+    - **NEW**: Enhanced debugging and troubleshooting tools
 
-- [Qwen](https://github.com/QwenLM/Qwen) for their open source LLMs
-- [Tavily](https://tavily.com/) for search capabilities
-- [Jina](https://jina.ai/) for crawl search technology
-- [Browser-use](https://pypi.org/project/browser-use/) for control browser
-- And many other open source contributors
+### ⚙️ Improved Configuration and Deployment
 
-We're committed to giving back to the community and welcome contributions of all kinds - whether it's code, documentation, bug reports, or feature suggestions.
+- 🔧 **Enhanced Configuration Management**
+    - **NEW**: YAML-based configuration with environment variable support
+    - **NEW**: Flexible agent-LLM mapping configuration
+    - **NEW**: Enhanced environment management
+
+- 🐳 **Improved Deployment Options**
+    - Enhanced Docker support with better optimization
+    - **NEW**: Docker Compose setup for full-stack deployment
+    - **NEW**: Production-ready configurations
+
+## Why Choose FreeTop?
+
+### 🌟 Built on LangManus Excellence, Enhanced for Production
+
+While [LangManus](https://github.com/langmanus/langmanus) provided an excellent foundation for multi-agent AI automation, FreeTop takes it to the next level with production-ready enhancements:
+
+### 🚀 Key Advantages Over LangManus
+
+- **🧪 Production-Ready Testing**: Complete test coverage with 4-tier testing system (unit, integration, functional, E2E)
+- **⚙️ Enhanced Configuration**: YAML-based configuration with better flexibility and environment management
+- **🛡️ Improved Reliability**: Better error handling, recovery mechanisms, and system stability
+- **📊 Advanced Monitoring**: Comprehensive logging, performance tracking, and debugging tools
+- **🔧 Developer Experience**: Enhanced development tools, code quality checks, and documentation
+- **🐳 Better Deployment**: Optimized Docker support and production-ready configurations
+
+### 🤝 Standing on the Shoulders of Giants
+
+FreeTop builds upon the incredible work of the open source community:
+
+- **[LangManus](https://github.com/langmanus/langmanus)** - Our primary inspiration and foundation
+- **[LangChain](https://github.com/langchain-ai/langchain)** - Powering our LLM interactions
+- **[LangGraph](https://github.com/langchain-ai/langgraph)** - Enabling sophisticated multi-agent orchestration
+- **[Qwen](https://github.com/QwenLM/Qwen)** - Providing excellent open source LLMs
+- **[Tavily](https://tavily.com/)** - Delivering powerful search capabilities
+- **[Jina](https://jina.ai/)** - Enabling advanced content processing
+- **[Browser-use](https://pypi.org/project/browser-use/)** - Providing browser automation
+- And countless other open source contributors
+
+### 🎯 Our Mission
+
+We're committed to:
+- **Advancing AI automation** with production-ready, reliable solutions
+- **Giving back to the community** through open source contributions
+- **Maintaining high quality** through comprehensive testing and documentation
+- **Supporting developers** with excellent tooling and developer experience
+
+We welcome contributions of all kinds - code, documentation, bug reports, feature suggestions, and community support.
 
 ## Setup
 
@@ -178,7 +250,7 @@ We're committed to giving back to the community and welcome contributions of all
 
 ### Installation
 
-LangManus leverages [uv](https://github.com/astral-sh/uv) as its package manager to streamline dependency management.
+FreeTop leverages [uv](https://github.com/astral-sh/uv) as its package manager to streamline dependency management.
 Follow the steps below to set up a virtual environment and install the necessary dependencies:
 
 ```bash
@@ -190,13 +262,21 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Step 2: Install project dependencies
 uv sync
+
+# Step 3: Install Playwright for browser automation
+uv run playwright install
 ```
 
 By completing these steps, you'll ensure your environment is properly configured and ready for development.
 
 ### Configuration
 
-LangManus uses a three-layer LLM system, which are respectively used for reasoning, basic tasks, and vision-language tasks. Configuration is done using the `conf.yaml` file in the root directory of the project. You can copy `conf.yaml.example` to `conf.yaml` to start the configuration:
+FreeTop uses an enhanced three-layer LLM system for optimal task allocation:
+- **Reasoning LLM**: For complex decision-making and analysis
+- **Basic LLM**: For standard text processing tasks
+- **Vision LLM**: For image understanding and visual tasks
+
+Configuration is done using the `conf.yaml` file in the root directory. You can copy `conf.yaml.example` to `conf.yaml` to start:
 ```bash
 cp conf.yaml.example conf.yaml
 ```
@@ -396,22 +476,47 @@ This will:
 
 ## Development
 
-### Testing
+### 🧪 Comprehensive Testing System
 
-Run the test suite:
+FreeTop features a production-ready 4-tier testing system:
 
 ```bash
-# Run all tests
-make test
+# Quick test execution
+python run_tests.py                    # Run all tests
+python run_tests.py --type unit        # Run unit tests only
+python run_tests.py --type integration # Run integration tests
+python run_tests.py --type functional  # Run functional tests
+python run_tests.py --type e2e         # Run end-to-end tests
 
-# Run specific test file
-pytest tests/integration/test_workflow.py
+# With coverage reporting
+python run_tests.py --coverage         # Generate coverage report
+python run_tests.py --coverage --html  # Generate HTML coverage report
 
-# Run with coverage
-make coverage
+# Using Makefile (if available)
+make test                              # Run all tests
+make test-unit                         # Run unit tests
+make test-integration                  # Run integration tests
+make test-functional                   # Run functional tests
+make test-e2e                         # Run E2E tests
+make coverage                          # Generate coverage report
+
+# Traditional pytest commands
+pytest tests/                          # Run all tests
+pytest tests/unit/                     # Run unit tests
+pytest tests/integration/test_workflow.py  # Run specific test
+pytest --cov=src --cov-report=html    # Coverage with HTML report
 ```
 
-### Code Quality
+#### Test Structure
+
+- **Unit Tests** (`tests/unit/`): Test individual modules and functions
+- **Integration Tests** (`tests/integration/`): Test module interactions
+- **Functional Tests** (`tests/functional/`): Test complete business features
+- **E2E Tests** (`tests/e2e/`): Test complete user scenarios
+
+For detailed testing information, see [TESTING.md](TESTING.md).
+
+### 🔧 Code Quality
 
 ```bash
 # Run linting
@@ -419,6 +524,22 @@ make lint
 
 # Format code
 make format
+
+# Run pre-commit checks
+pre-commit run --all-files
+```
+
+### 📊 Development Tools
+
+```bash
+# Install development dependencies
+python run_tests.py --install-deps
+
+# Clean test artifacts
+make clean-test
+
+# View test help
+python run_tests.py --help
 ```
 
 ## FAQ
@@ -439,11 +560,47 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Acknowledgments
 
-Special thanks to all the open source projects and contributors that make LangManus possible. We stand on the shoulders of giants.
+### 🙏 Deep Gratitude to LangManus
 
-In particular, we want to express our deep appreciation for:
-- [LangChain](https://github.com/langchain-ai/langchain) for their exceptional framework that powers our LLM interactions and chains
-- [LangGraph](https://github.com/langchain-ai/langgraph) for enabling our sophisticated multi-agent orchestration
-- [Browser-use](https://pypi.org/project/browser-use/) for control browser
+FreeTop exists because of the exceptional foundation provided by [LangManus](https://github.com/langmanus/langmanus). We are deeply grateful to the LangManus team for:
 
-These amazing projects form the foundation of LangManus and demonstrate the power of open source collaboration.
+- **Pioneering Vision**: Creating an innovative multi-agent AI automation framework
+- **Open Source Spirit**: Sharing their work with the community under MIT license
+- **Technical Excellence**: Providing a solid, well-architected foundation to build upon
+- **Community Building**: Fostering collaboration and knowledge sharing
+
+### 🌟 Standing on the Shoulders of Giants
+
+FreeTop builds upon the incredible work of the entire open source ecosystem:
+
+**Core Framework:**
+- **[LangManus](https://github.com/langmanus/langmanus)** - Our primary inspiration and foundation
+- **[LangChain](https://github.com/langchain-ai/langchain)** - Exceptional framework powering LLM interactions
+- **[LangGraph](https://github.com/langchain-ai/langgraph)** - Enabling sophisticated multi-agent orchestration
+
+**AI and ML:**
+- **[Qwen](https://github.com/QwenLM/Qwen)** - Outstanding open source language models
+- **[OpenAI](https://openai.com/)** - Advancing the field of artificial intelligence
+
+**Tools and Services:**
+- **[Tavily](https://tavily.com/)** - Powerful search capabilities
+- **[Jina](https://jina.ai/)** - Advanced content processing and neural search
+- **[Browser-use](https://pypi.org/project/browser-use/)** - Reliable browser automation
+- **[Playwright](https://playwright.dev/)** - Modern web automation framework
+
+**Development Tools:**
+- **[uv](https://github.com/astral-sh/uv)** - Fast Python package manager
+- **[pytest](https://pytest.org/)** - Comprehensive testing framework
+- **[Docker](https://docker.com/)** - Containerization platform
+
+### 🚀 Our Contribution
+
+While building upon LangManus's excellent foundation, FreeTop contributes back to the community with:
+
+- **Enhanced Testing**: Production-ready 4-tier testing system
+- **Improved Reliability**: Better error handling and recovery mechanisms
+- **Developer Experience**: Enhanced tooling and documentation
+- **Configuration Management**: Flexible YAML-based configuration
+- **Deployment Ready**: Optimized Docker and production configurations
+
+We believe in the power of open source collaboration and are committed to giving back to the community that makes innovation possible.

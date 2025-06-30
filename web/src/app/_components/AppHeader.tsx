@@ -19,20 +19,47 @@ export function AppHeader() {
 
   useEffect(() => {
     // 检查本地存储中的用户信息
-    const token = localStorage.getItem('auth_token');
-    const userInfo = localStorage.getItem('user_info');
-    
-    if (token && userInfo) {
-      try {
-        const parsedUser = JSON.parse(userInfo);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Failed to parse user info:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_info');
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('auth_token');
+      const userInfo = localStorage.getItem('user_info');
+      
+      if (token && userInfo) {
+        try {
+          const parsedUser = JSON.parse(userInfo);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('Failed to parse user info:', error);
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_info');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-    }
-  }, []);
+    };
+    
+    checkLoginStatus();
+    
+    // 监听storage变化，确保与其他组件状态同步
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token' || e.key === 'user_info') {
+        checkLoginStatus();
+      }
+    };
+    
+    // 监听自定义事件，用于同一页面内的状态同步
+    const handleLoginStateChange = () => {
+      checkLoginStatus();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('loginStateChanged', handleLoginStateChange);
+    
+    return () => {
+       window.removeEventListener('storage', handleStorageChange);
+       window.removeEventListener('loginStateChanged', handleLoginStateChange);
+     };
+   }, []);
 
   const handleLogin = (username: string, password: string) => {
     // 登录成功后，用户信息已在LoginModal中保存到localStorage

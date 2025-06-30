@@ -46,23 +46,71 @@ export async function abortTask(taskId: string): Promise<{ status: string; messa
   return response.json();
 }
 
+// 刷新Token
+async function refreshToken(): Promise<boolean> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(env.NEXT_PUBLIC_API_URL + '/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('auth_token', data.token);
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    return false;
+  }
+}
+
 export async function abortAllUserTasks(): Promise<{ status: string; message: string; aborted_tasks?: string[] }> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   if (!token) {
     throw new Error('No authentication token found');
   }
 
-  const response = await fetch(env.NEXT_PUBLIC_API_URL + '/chat/abort-user-tasks', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to abort user tasks: ${response.status}`);
+  try {
+    const response = await fetch(env.NEXT_PUBLIC_API_URL + '/chat/abort-user-tasks', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      return response.json();
+    } else if (response.status === 401) {
+      const errorData = await response.json();
+      if (errorData.detail?.includes('已过期')) {
+        // Token过期，尝试刷新
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          // 刷新成功，重新调用
+          return abortAllUserTasks();
+        }
+      }
+      // Token无效或刷新失败
+      localStorage.removeItem('auth_token');
+      throw new Error('Authentication failed. Please login again.');
+    } else {
+      throw new Error(`Failed to abort user tasks: ${response.status}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Authentication failed')) {
+      throw error;
+    }
+    throw new Error(`Failed to abort user tasks: ${error}`);
   }
-  
-  return response.json();
 }

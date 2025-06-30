@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { cn } from "~/core/utils";
 import { Markdown } from "./Markdown";
 import { HotelInfoDisplay } from "./HotelInfoDisplay";
 import { ProductInfoDisplay } from "./ProductInfoDisplay";
+import { useGifCache } from "../_hooks/useGifCache";
+import { trackGifView, trackGifError, trackModalOpen, trackModalClose, trackRetryAttempt } from "../_utils/analytics";
+
+// 配置常量
+const MODAL_CONFIG = {
+  MAX_RETRY_COUNT: 3,
+  RETRY_DELAY_BASE: 1000,
+  PRELOAD_ENABLED: true,
+} as const;
+
+// 更严格的类型定义
+type ContentType = "general" | "flight" | "hotel" | "product" | "image" | "video" | "gif";
 
 interface ContentDetailModalProps {
   isOpen: boolean;
@@ -12,7 +25,14 @@ interface ContentDetailModalProps {
   title?: string;
   content: string;
   url?: string;
-  type?: "general" | "flight" | "hotel" | "product" | "image" | "video";
+  type?: ContentType;
+}
+
+interface MediaError {
+  type: 'image' | 'video';
+  message: string;
+  retryCount: number;
+  timestamp: number;
 }
 
 export function ContentDetailModal({
@@ -23,10 +43,128 @@ export function ContentDetailModal({
   url,
   type = "general",
 }: ContentDetailModalProps) {
-  const [imageError, setImageError] = useState(false);
-  const [videoError, setVideoError] = useState(false);
+  const [mediaErrors, setMediaErrors] = useState<Map<string, MediaError>>(new Map());
+  const [isLoading, setIsLoading] = useState(false);
+  const [preloadedImages, setPreloadedImages] = useState<Set<string>>(new Set());
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const modalOpenTimeRef = useRef<number>(0);
+  const loadStartTimeRef = useRef<number>(0);
+  
+  // GIF缓存Hook
+  const { getCachedUrl, preloadGif, getCacheStats } = useGifCache();
+  
+  // 获取实际显示的URL（优先使用缓存）
+  const getDisplayUrl = (originalUrl: string) => {
+    if (type === 'gif') {
+      const cachedUrl = getCachedUrl(originalUrl);
+      return cachedUrl || originalUrl;
+    }
+    return originalUrl;
+  };
 
-  // 添加ESC键关闭功能
+  // 重试机制（增强版）
+  const handleMediaError = (mediaType: 'image' | 'video', src: string, error?: Event) => {
+    const currentError = mediaErrors.get(src);
+    const retryCount = currentError ? currentError.retryCount + 1 : 1;
+    
+    // 跟踪错误
+    trackGifError({
+      url: src,
+      error: error?.type || 'load_error',
+      retryCount,
+      userAgent: navigator.userAgent,
+    });
+    
+    if (retryCount <= MODAL_CONFIG.MAX_RETRY_COUNT) {
+      const delay = MODAL_CONFIG.RETRY_DELAY_BASE * Math.pow(2, retryCount - 1);
+      
+      retryTimeoutRef.current = setTimeout(() => {
+        // 触发重新加载
+        const element = document.querySelector(`[data-src="${src}"]`) as HTMLImageElement | HTMLVideoElement;
+        if (element) {
+          element.src = `${src}?retry=${retryCount}&t=${Date.now()}`;
+          
+          // 跟踪重试尝试
+          trackRetryAttempt({
+            url: src,
+            attempt: retryCount,
+            success: false, // 将在成功加载时更新
+          });
+        }
+      }, delay);
+    }
+    
+    setMediaErrors(prev => new Map(prev.set(src, {
+      type: mediaType,
+      message: error ? `加载失败 (尝试 ${retryCount}/${MODAL_CONFIG.MAX_RETRY_COUNT})` : '加载失败',
+      retryCount,
+      timestamp: Date.now()
+    })));
+  };
+
+  // 预加载图片（支持GIF缓存）
+  const preloadImage = async (src: string) => {
+    if (!MODAL_CONFIG.PRELOAD_ENABLED || preloadedImages.has(src)) return;
+    
+    try {
+      if (type === 'gif') {
+        // 使用GIF缓存预加载
+        await preloadGif(src);
+        setPreloadedImages(prev => new Set(prev.add(src)));
+      } else {
+        // 普通图片预加载
+        const img = new Image();
+        img.onload = () => {
+          setPreloadedImages(prev => new Set(prev.add(src)));
+        };
+        img.onerror = () => {
+          handleMediaError('image', src);
+        };
+        img.src = src;
+      }
+    } catch (error) {
+      console.warn('Preload failed:', src, error);
+      handleMediaError('image', src);
+    }
+  };
+
+  // 清理错误状态
+  const clearMediaError = (src: string) => {
+    setMediaErrors(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(src);
+      return newMap;
+    });
+  };
+
+  // 预加载媒体内容和分析跟踪
+  useEffect(() => {
+    if (isOpen) {
+      modalOpenTimeRef.current = Date.now();
+      
+      // 跟踪模态框打开
+      trackModalOpen({
+        type: type || 'general',
+        url: content,
+      });
+      
+      // 预加载媒体内容
+      if ((type === 'image' || type === 'gif') && content) {
+        preloadImage(content);
+      }
+    } else if (modalOpenTimeRef.current > 0) {
+      // 跟踪模态框关闭
+      const duration = Date.now() - modalOpenTimeRef.current;
+      trackModalClose({
+        type: type || 'general',
+        duration,
+      });
+      modalOpenTimeRef.current = 0;
+    }
+  }, [isOpen, type, content]);
+
+  // 添加ESC键关闭功能和可访问性改进
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
@@ -34,15 +172,29 @@ export function ContentDetailModal({
       }
     };
 
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
+      document.addEventListener('mousedown', handleClickOutside);
       // 防止背景滚动
       document.body.style.overflow = 'hidden';
+      // 焦点管理
+      modalRef.current?.focus();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'unset';
+      // 清理重试定时器
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
     };
   }, [isOpen, onClose]);
 
@@ -54,48 +206,133 @@ export function ContentDetailModal({
   );
 
   const renderContent = () => {
-    if (type === "image") {
-      if (imageError) {
+    const currentError = mediaErrors.get(content);
+    
+    if (type === "image" || type === "gif") {
+      if (currentError && currentError.retryCount >= MODAL_CONFIG.MAX_RETRY_COUNT) {
         return (
           <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
             <div className="text-center text-gray-500">
-              <div className="text-4xl mb-2">🖼️</div>
-              <p>图片加载失败</p>
+              <div className="text-4xl mb-2">{type === "gif" ? "🎬" : "🖼️"}</div>
+              <p className="mb-2">{currentError.message}</p>
+              <button
+                onClick={() => {
+                  clearMediaError(content);
+                  preloadImage(content);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                aria-label={`重新加载${type === "gif" ? "GIF动画" : "图片"}`}
+              >
+                重新加载
+              </button>
             </div>
           </div>
         );
       }
+      
       return (
-        <div className="max-w-full max-h-[70vh] overflow-auto">
+        <div className="max-w-full max-h-[70vh] overflow-auto flex items-center justify-center bg-gray-50 rounded-lg">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-75">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          )}
           <img
-            src={content}
-            alt={title || "图片"}
-            className="w-full h-auto rounded-lg"
-            onError={() => setImageError(true)}
+            src={getDisplayUrl(content)}
+            alt={title || (type === "gif" ? "GIF动画" : "图片")}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+            data-src={content}
+            onLoad={() => {
+              setIsLoading(false);
+              clearMediaError(content);
+              
+              // 计算加载时间并跟踪
+              const loadTime = loadStartTimeRef.current > 0 
+                ? Date.now() - loadStartTimeRef.current 
+                : undefined;
+              
+              const fromCache = getCachedUrl(content) !== null;
+              
+              trackGifView({
+                url: content,
+                loadTime,
+                fromCache,
+                retryCount: mediaErrors.get(content)?.retryCount || 0,
+              });
+              
+              // 如果是重试成功，更新重试跟踪
+              const currentError = mediaErrors.get(content);
+              if (currentError && currentError.retryCount > 0) {
+                trackRetryAttempt({
+                  url: content,
+                  attempt: currentError.retryCount,
+                  success: true,
+                });
+              }
+            }}
+            onLoadStart={() => {
+              setIsLoading(true);
+              loadStartTimeRef.current = Date.now();
+            }}
+            onError={(e) => handleMediaError('image', content, e.nativeEvent)}
+            aria-describedby={currentError ? 'media-error-description' : undefined}
           />
+          {currentError && currentError.retryCount < MODAL_CONFIG.MAX_RETRY_COUNT && (
+            <div id="media-error-description" className="sr-only">
+              {currentError.message}
+            </div>
+          )}
         </div>
       );
     }
 
     if (type === "video") {
-      if (videoError) {
+      if (currentError && currentError.retryCount >= MODAL_CONFIG.MAX_RETRY_COUNT) {
         return (
           <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
             <div className="text-center text-gray-500">
               <div className="text-4xl mb-2">🎥</div>
-              <p>视频加载失败</p>
+              <p className="mb-2">{currentError.message}</p>
+              <button
+                onClick={() => {
+                  clearMediaError(content);
+                  setIsLoading(false);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                aria-label="重新加载视频"
+              >
+                重新加载
+              </button>
             </div>
           </div>
         );
       }
+      
       return (
-        <div className="max-w-full max-h-[70vh]">
+        <div className="max-w-full max-h-[70vh] relative">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-75 z-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          )}
           <video
             src={content}
             controls
             className="w-full h-auto rounded-lg"
-            onError={() => setVideoError(true)}
+            data-src={content}
+            onLoadStart={() => setIsLoading(true)}
+            onLoadedData={() => {
+              setIsLoading(false);
+              clearMediaError(content);
+            }}
+            onError={(e) => handleMediaError('video', content, e.nativeEvent)}
+            aria-describedby={currentError ? 'video-error-description' : undefined}
           />
+          {currentError && currentError.retryCount < MODAL_CONFIG.MAX_RETRY_COUNT && (
+            <div id="video-error-description" className="sr-only">
+              {currentError.message}
+            </div>
+          )}
         </div>
       );
     }
@@ -119,24 +356,35 @@ export function ContentDetailModal({
   return (
     <div 
       className={cn(modalClasses, "bg-gray-100/50 backdrop-blur-sm")}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      aria-describedby="modal-content"
       onClick={onClose}
     >
       <div 
+        ref={modalRef}
         className="modal-content w-[90vw] max-w-2xl"
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        role="document"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {title || (type === "image" ? "图片详情" : type === "video" ? "视频详情" : "内容详情")}
+            <h2 
+              id="modal-title"
+              className="text-xl font-semibold text-gray-900"
+            >
+              {title || (type === "image" ? "图片详情" : type === "gif" ? "GIF动画详情" : type === "video" ? "视频详情" : "内容详情")}
             </h2>
             {url && (
               <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                aria-label={`在新窗口中打开链接: ${url}`}
               >
                 {url}
               </a>
@@ -144,16 +392,22 @@ export function ContentDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label="关闭模态框"
+            type="button"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Content */}
-        <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
+        <div 
+          id="modal-content"
+          className="max-h-[calc(90vh-120px)] overflow-y-auto p-6"
+          role="main"
+        >
           {renderContent()}
         </div>
       </div>

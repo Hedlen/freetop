@@ -33,25 +33,53 @@ export default function HomePage() {
   const [sessionHistory, setSessionHistory] = useState<(Message[] | { messages: Message[]; createdAt: number })[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [browserMode, setBrowserMode] = useState(false);
 
   // 确保客户端渲染
   useEffect(() => {
     setIsClient(true);
     
     // 检查用户登录状态
-    const token = localStorage.getItem('auth_token');
-    const userInfo = localStorage.getItem('user_info');
-    
-    if (token && userInfo) {
-      try {
-        const parsedUser = JSON.parse(userInfo);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Failed to parse user info:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_info');
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('auth_token');
+      const userInfo = localStorage.getItem('user_info');
+      
+      if (token && userInfo) {
+        try {
+          const parsedUser = JSON.parse(userInfo);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('Failed to parse user info:', error);
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_info');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-    }
+    };
+    
+    checkLoginStatus();
+    
+    // 监听storage变化，当其他标签页登录时同步状态
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token' || e.key === 'user_info') {
+        checkLoginStatus();
+      }
+    };
+    
+    // 监听自定义事件，用于同一页面内的状态同步
+    const handleLoginStateChange = () => {
+      checkLoginStatus();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('loginStateChanged', handleLoginStateChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('loginStateChanged', handleLoginStateChange);
+    };
 
     // 加载历史记录
     const storedHistory = localStorage.getItem('freetop_session_history');
@@ -238,6 +266,8 @@ export default function HomePage() {
         isOpen={sidePanelOpen}
         onClose={() => setSidePanelOpen(false)}
         sidePanel={<ResultSidePanel task={selectedTask} />}
+        browserMode={browserMode}
+        onBrowserModeChange={setBrowserMode}
       >
         <div className="flex h-screen w-full flex-col relative z-10">
           {/* Header - 使用AppHeader组件 */}
@@ -354,6 +384,19 @@ export default function HomePage() {
           onLoginSuccess={(userData) => {
             setUser(userData);
             setShowLoginModal(false);
+            // 强制重新检查登录状态
+            setTimeout(() => {
+              const token = localStorage.getItem('auth_token');
+              const userInfo = localStorage.getItem('user_info');
+              if (token && userInfo) {
+                try {
+                  const parsedUser = JSON.parse(userInfo);
+                  setUser(parsedUser);
+                } catch (error) {
+                  console.error('Failed to parse user info after login:', error);
+                }
+              }
+            }, 100);
           }}
         />
       )}

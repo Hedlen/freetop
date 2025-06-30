@@ -14,10 +14,10 @@ from src.config.agents import AGENT_LLM_MAP
 
 
 # Create agents using configured LLM types
-def create_agent(agent_type: str, tools: list, prompt_template: str):
+def create_agent(agent_type: str, tools: list, prompt_template: str, user_id: str = None):
     """Factory function to create agents with consistent configuration."""
     return create_react_agent(
-        get_llm_by_type(AGENT_LLM_MAP[agent_type]),
+        get_llm_by_type(AGENT_LLM_MAP[agent_type], user_id),
         tools=tools,
         prompt=lambda state: apply_prompt_template(prompt_template, state),
     )

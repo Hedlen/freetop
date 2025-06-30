@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.models.user import User, UserSettings
 from src.database.connection import get_db_session
+from src.services.user_settings_cache import user_settings_cache, cache_user_settings
 from datetime import datetime
 from typing import Optional, Dict, Any
 import logging
@@ -120,6 +121,66 @@ class UserService:
             return None
     
     @staticmethod
+    def verify_token_with_details(token: str) -> Dict[str, Any]:
+        """验证JWT token并返回详细信息"""
+        try:
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            return {
+                "valid": True,
+                "payload": payload,
+                "error": None
+            }
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
+            return {
+                "valid": False,
+                "payload": None,
+                "error": "expired"
+            }
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"Invalid token: {e}")
+            return {
+                "valid": False,
+                "payload": None,
+                "error": "invalid"
+            }
+    
+    @staticmethod
+    def refresh_token(token: str) -> Dict[str, Any]:
+        """刷新JWT token"""
+        try:
+            # 尝试解码token，即使已过期也要获取用户信息
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], options={"verify_exp": False})
+            
+            # 验证用户是否仍然存在且活跃
+            user_id = payload.get("user_id")
+            username = payload.get("username")
+            
+            if not user_id or not username:
+                return {"success": False, "message": "无效的token格式"}
+            
+            user = UserService.get_user_by_id(user_id)
+            if not user:
+                return {"success": False, "message": "用户不存在"}
+            
+            # 生成新的token
+            new_token = UserService.generate_token(user_id, username)
+            
+            logger.info(f"Token refreshed for user: {username}")
+            return {
+                "success": True,
+                "message": "Token刷新成功",
+                "token": new_token
+            }
+            
+        except jwt.InvalidTokenError as e:
+            logger.error(f"Cannot refresh invalid token: {e}")
+            return {"success": False, "message": "无效的token，无法刷新"}
+        except Exception as e:
+            logger.error(f"Error refreshing token: {e}")
+            return {"success": False, "message": "Token刷新失败"}
+    
+    @staticmethod
     def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
         """根据ID获取用户信息"""
         try:
@@ -192,24 +253,41 @@ class UserService:
             return {"success": False, "message": "个人信息更新失败"}
     
     @staticmethod
-    def get_user_settings(user_id: int) -> Dict[str, Any]:
-        """获取用户设置"""
+    def get_user_settings(user_id: int, use_cache: bool = True) -> Dict[str, Any]:
+        """获取用户设置，支持缓存"""
         try:
+            # 尝试从缓存获取
+            if use_cache:
+                cached_result = user_settings_cache.get(user_id)
+                if cached_result:
+                    logger.debug(f"从缓存获取用户设置: user_id={user_id}")
+                    return cached_result
+            
+            # 从数据库获取
+            logger.debug(f"从数据库获取用户设置: user_id={user_id}")
             with get_db_session() as db:
                 user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
                 if user_settings:
-                    return {
+                    result = {
                         "success": True,
                         "settings": user_settings.get_settings()
                     }
                 else:
                     # 如果没有设置记录，返回空设置
-                    return {
+                    result = {
                         "success": True,
                         "settings": {}
                     }
+                
+                # 缓存结果
+                if use_cache and result.get('success'):
+                    user_settings_cache.set(user_id, result)
+                    logger.debug(f"缓存用户设置: user_id={user_id}")
+                
+                return result
+                
         except Exception as e:
-            logger.error(f"Error getting user settings: {e}")
+            logger.error(f"Error getting user settings: user_id={user_id}, error={e}")
             return {"success": False, "message": "获取设置失败"}
     
     @staticmethod
@@ -236,11 +314,21 @@ class UserService:
                 
                 db.commit()
                 
-                return {
+                # 清除缓存，确保下次获取最新数据
+                user_settings_cache.invalidate(user_id)
+                logger.debug(f"用户设置已保存，清除缓存: user_id={user_id}")
+                
+                result = {
                     "success": True,
                     "message": "设置保存成功",
                     "settings": user_settings.get_settings()
                 }
+                
+                # 重新缓存最新数据
+                user_settings_cache.set(user_id, result)
+                
+                return result
+                
         except Exception as e:
-            logger.error(f"Error saving user settings: {e}")
+            logger.error(f"Error saving user settings: user_id={user_id}, error={e}")
             return {"success": False, "message": "设置保存失败"}
