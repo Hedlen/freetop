@@ -646,7 +646,7 @@ make format
 
 ## Star 趋势
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langmanus/langmanus&type=Date)](https://www.star-history.com/#langmanus/langmanus&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Hedlen/freetop&type=Date)](https://www.star-history.com/#Hedlen/freetop&Date)
 
 ## 致谢
 

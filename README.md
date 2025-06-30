@@ -39,18 +39,26 @@ FreeTop is built upon the incredible foundation provided by [LangManus](https://
 ## Table of Contents
 
 - [🦜🤖 FreeTop](#-freetop)
+  - [🙏 Acknowledgments to LangManus](#-acknowledgments-to-langmanus)
   - [Demo](#demo)
   - [Table of Contents](#table-of-contents)
   - [Quick Start](#quick-start)
   - [Project Statement](#project-statement)
   - [项目声明](#项目声明)
   - [Architecture](#architecture)
+    - [Enhanced Multi-Agent System](#enhanced-multi-agent-system)
+    - [Key Architectural Improvements](#key-architectural-improvements)
   - [Features](#features)
-    - [Core Capabilities](#core-capabilities)
-    - [Tools and Integrations](#tools-and-integrations)
-    - [Development Features](#development-features)
-    - [Workflow Management](#workflow-management)
-  - [Why FreeTop?](#why-freetop)
+    - [🚀 Enhanced Core Capabilities](#-enhanced-core-capabilities)
+    - [🔧 Enhanced Tools and Integrations](#-enhanced-tools-and-integrations)
+    - [🛠️ Enhanced Development Features](#️-enhanced-development-features)
+    - [📊 Enhanced Workflow Management](#-enhanced-workflow-management)
+    - [⚙️ Improved Configuration and Deployment](#️-improved-configuration-and-deployment)
+  - [Why Choose FreeTop?](#why-choose-freetop)
+    - [🌟 Built on LangManus Excellence, Enhanced for Production](#-built-on-langmanus-excellence-enhanced-for-production)
+    - [🚀 Key Advantages Over LangManus](#-key-advantages-over-langmanus)
+    - [🤝 Standing on the Shoulders of Giants](#-standing-on-the-shoulders-of-giants)
+    - [🎯 Our Mission](#-our-mission)
   - [Setup](#setup)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
@@ -67,13 +75,18 @@ FreeTop is built upon the incredible foundation provided by [LangManus](https://
   - [Web UI](#web-ui)
   - [Docker Compose (include both backend and frontend)](#docker-compose-include-both-backend-and-frontend)
   - [Development](#development)
-    - [Testing](#testing)
-    - [Code Quality](#code-quality)
+    - [🧪 Comprehensive Testing System](#-comprehensive-testing-system)
+      - [Test Structure](#test-structure)
+    - [🔧 Code Quality](#-code-quality)
+    - [📊 Development Tools](#-development-tools)
   - [FAQ](#faq)
   - [Contributing](#contributing)
   - [License](#license)
   - [Star History](#star-history)
   - [Acknowledgments](#acknowledgments)
+    - [🙏 Deep Gratitude to LangManus](#-deep-gratitude-to-langmanus)
+    - [🌟 Standing on the Shoulders of Giants](#-standing-on-the-shoulders-of-giants-1)
+    - [🚀 Our Contribution](#-our-contribution)
 
 ## Quick Start
 
@@ -556,7 +569,7 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langmanus/langmanus&type=Date)](https://www.star-history.com/#langmanus/langmanus&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Hedlen/freetop&type=Date)](https://www.star-history.com/#Hedlen/freetop&Date)
 
 ## Acknowledgments
 
