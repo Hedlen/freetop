@@ -115,7 +115,7 @@ export function InputBox({
           >
             <Atom className={cn("h-4 w-4", deepThinkingMode ? "text-blue-600" : "text-gray-600")} />
             <span>Deep Think</span>
-            {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>}
+            {/* {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>} */}
           </button>
           <button
             className={cn(
@@ -133,7 +133,7 @@ export function InputBox({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span>Search First</span>
-            {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>}
+            {/* {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>} */}
           </button>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">

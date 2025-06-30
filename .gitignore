@@ -26,3 +26,5 @@ freetop.db
 
 # Archive directory
 archive/
+.github/
+.vscode/
