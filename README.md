@@ -34,7 +34,7 @@ FreeTop is built upon the incredible foundation provided by [LangManus](https://
 
 ![Demo](./assets/demo.gif)
 
-- [View on YouTube](https://youtu.be/sZCHqrQBUGk)
+- [View on here](./assets/first.png)
 
 ## Table of Contents
 
@@ -348,7 +348,7 @@ CHROME_PROXY_PASSWORD=  # Optional, the default is None
 
 ### Configure Pre-commit Hook
 
-LangManus includes a pre-commit hook that runs linting and formatting checks before each commit. To set it up:
+FreeTop includes a pre-commit hook that runs linting and formatting checks before each commit. To set it up:
 
 1. Make the pre-commit script executable:
 
@@ -381,7 +381,7 @@ uv run main.py
 
 ### API Server
 
-LangManus provides a FastAPI-based API server with streaming support:
+FreeTop provides a FastAPI-based API server with streaming support:
 
 ```bash
 # Start the API server
@@ -405,7 +405,7 @@ The API server exposes the following endpoints:
 
 ### Advanced Configuration
 
-LangManus can be customized through various configuration files in the `src/config` directory:
+FreeTop can be customized through various configuration files in the `src/config` directory:
 
 - `env.py`: Configure LLM models, API keys, and base URLs
 - `tools.py`: Adjust tool-specific settings (e.g., Tavily search results limit)
@@ -413,7 +413,7 @@ LangManus can be customized through various configuration files in the `src/conf
 
 ### Agent Prompts System
 
-LangManus uses a sophisticated prompting system in the `src/prompts` directory to define agent behaviors and responsibilities:
+FreeTop uses a sophisticated prompting system in the `src/prompts` directory to define agent behaviors and responsibilities:
 
 #### Core Agent Roles
 
@@ -446,31 +446,31 @@ Each agent's prompt is defined in a separate markdown file, making it easy to mo
 
 ## Docker
 
-LangManus can be run in a Docker container. default serve api on port 8000.
+FreeTop can be run in a Docker container. default serve api on port 8000.
 
 Before run docker, you need to prepare environment variables in `.env` file.
 
 ```bash
-docker build -t langmanus .
-docker run --name langmanus -d --env-file .env -e CHROME_HEADLESS=True -p 8000:8000 langmanus
+docker build -t freetop .
+docker run --name freetop -d --env-file .env -e CHROME_HEADLESS=True -p 8000:8000 freetop
 ```
 
 You can also just run the cli with docker.
 
 ```bash
-docker build -t langmanus .
-docker run --rm -it --env-file .env -e CHROME_HEADLESS=True langmanus uv run python main.py
+docker build -t freetop .
+docker run --rm -it --env-file .env -e CHROME_HEADLESS=True freetop uv run python main.py
 ```
 
 ## Web UI
 
-LangManus provides a default web UI.
+FreeTop provides a default web UI.
 
-Please refer to the [langmanus/langmanus-web-ui](https://github.com/langmanus/langmanus-web) project for more details.
+Please refer to the \web folder for more details.
 
 ## Docker Compose (include both backend and frontend)
 
-LangManus provides a docker-compose setup to easily run both the backend and frontend together:
+FreeTop provides a docker-compose setup to easily run both the backend and frontend together:
 
 ```bash
 # Start both backend and frontend
@@ -481,8 +481,8 @@ docker-compose up -d
 ```
 
 This will:
-1. Build and start the LangManus backend container
-2. Build and start the LangManus web UI container
+1. Build and start the FreeTop backend container
+2. Build and start the FreeTop web UI container
 3. Connect them using a shared network
 
 ** Make sure you have your `.env` file prepared with the necessary API keys before starting the services. **
