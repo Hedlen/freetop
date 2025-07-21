@@ -32,9 +32,9 @@ FreeTop is built upon the incredible foundation provided by [LangManus](https://
 4. Use Python to compute the influence index of DeepSeek R1 based on the collected data.
 5. Present a comprehensive report to the user.
 
-![Demo](./assets/demo.gif)
+![Demo](./assets/first.png)
 
-- [View on here](./assets/first.png)
+<!-- - [View on here](./assets/first.png) -->
 
 ## Table of Contents
 
