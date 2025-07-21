@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![FreeTop Demo](assets/demo.gif)
+<!-- ![FreeTop Demo](assets/demo.gif) -->
 
 **🚀 基于LangManus的增强型多代理AI自动化框架**
 
