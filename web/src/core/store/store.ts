@@ -16,7 +16,7 @@ interface Store {
   responding: boolean;
   currentTaskId: string | null;
   state: {
-    messages: { role: string; content: string }[];
+    messages: Message[];
   };
 }
 
@@ -160,10 +160,10 @@ export function setResponding(responding: boolean) {
 }
 
 export function _setState(state: {
-  messages: { role: string; content: string }[];
+  messages: Message[];
 }) {
   // 修复：应该合并状态而不是嵌套
-  useStore.setState(state);
+  useStore.setState({ state });
 }
 
 export async function abortCurrentTask(): Promise<boolean> {

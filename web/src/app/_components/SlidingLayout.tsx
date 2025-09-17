@@ -1,8 +1,21 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { cn } from "~/core/utils";
 import { BrowserEmbedView } from "./BrowserEmbedView";
+
+// 防抖工具函数
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
 interface SlidingLayoutProps {
   children: ReactNode;
@@ -23,12 +36,54 @@ export function SlidingLayout({
 }: SlidingLayoutProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isBrowserActive, setIsBrowserActive] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isWindowVisible, setIsWindowVisible] = useState(true);
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // 窗口可见性检测
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsWindowVisible(!document.hidden);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  // resize事件防抖处理
+  const handleResize = useCallback(
+    debounce(() => {
+      setIsResizing(false);
+    }, 300),
+    []
+  );
+  
+  useEffect(() => {
+    const handleResizeStart = () => {
+      setIsResizing(true);
+      handleResize();
+    };
+    
+    window.addEventListener('resize', handleResizeStart);
+    return () => {
+      window.removeEventListener('resize', handleResizeStart);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [handleResize]);
 
   useEffect(() => {
-    if (isOpen || isBrowserActive) {
+    if ((isOpen || isBrowserActive) && isWindowVisible && !isResizing) {
       setIsAnimating(true);
     }
-  }, [isOpen, isBrowserActive]);
+  }, [isOpen, isBrowserActive, isWindowVisible, isResizing]);
 
   // 移除自动弹出浏览器的逻辑，改为手动点击查看详情
   // useEffect(() => {
@@ -58,28 +113,42 @@ export function SlidingLayout({
   //   };
   // }, [onBrowserModeChange]);
 
-  const handleTransitionEnd = () => {
-    if (!isOpen && !isBrowserActive) {
+  const handleTransitionEnd = useCallback(() => {
+    if (!isResizing && !isOpen && !isBrowserActive) {
       setIsAnimating(false);
     }
-  };
+  }, [isResizing, isOpen, isBrowserActive]);
 
-  const handleCloseBrowser = () => {
-    setIsBrowserActive(false);
-    onBrowserModeChange?.(false);
-  };
+  const handleCloseBrowser = useCallback(() => {
+    if (!isResizing && isWindowVisible) {
+      setIsBrowserActive(false);
+      onBrowserModeChange?.(false);
+    }
+  }, [isResizing, isWindowVisible, onBrowserModeChange]);
 
   const isRightPanelOpen = isOpen || isBrowserActive;
 
   return (
-    <div className="relative w-full overflow-hidden">
+    <div 
+      className="relative w-full viewport-constrained"
+      style={{
+        transform: 'translateZ(0)', // 强制GPU加速
+      }}
+    >
       {/* 主内容区域 */}
       <div
         className={cn(
-            "transition-transform duration-500 ease-in-out",
-            isRightPanelOpen ? "transform -translate-x-[600px]" : "transform translate-x-0"
+            "ease-in-out will-change-transform", // GPU加速
+            "no-horizontal-scroll", // 防止水平滚动
+            isRightPanelOpen ? "transform -translate-x-[min(600px,80vw)]" : "transform translate-x-0",
+            // 根据状态调整动画
+            isResizing ? "transition-none" : "transition-transform duration-500",
+            isResizing && "pointer-events-none" // resize时禁用交互
           )}
         onTransitionEnd={handleTransitionEnd}
+        style={{
+          transform: isRightPanelOpen ? `translate3d(-${Math.min(600, window.innerWidth * 0.8)}px, 0, 0)` : 'translate3d(0, 0, 0)', // 响应式3D变换
+        }}
       >
         {children}
       </div>
@@ -88,10 +157,17 @@ export function SlidingLayout({
       {(isRightPanelOpen || isAnimating) && (
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-[600px] bg-white/95 backdrop-blur-md border-l border-gray-200 shadow-2xl z-50",
-            "transition-transform duration-500 ease-in-out",
-            isRightPanelOpen ? "transform translate-x-0" : "transform translate-x-full"
+            "fixed right-0 top-0 h-full w-[min(600px,80vw)] bg-white/95 backdrop-blur-md border-l border-gray-200 shadow-2xl z-50",
+            "ease-in-out will-change-transform", // GPU加速
+            "no-horizontal-scroll", // 防止水平滚动
+            isRightPanelOpen ? "transform translate-x-0" : "transform translate-x-full",
+            isResizing ? "transition-none" : "transition-transform duration-500",
+            isResizing && "pointer-events-none" // resize时禁用交互
           )}
+          style={{
+            transform: 'translate3d(0, 0, 0)', // 强制GPU加速
+            width: `${Math.min(600, window.innerWidth * 0.8)}px`, // 响应式宽度
+          }}
         >
           {/* 头部标题栏 */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -112,7 +188,11 @@ export function SlidingLayout({
               )}
               <button
                 onClick={isBrowserActive ? handleCloseBrowser : onClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className={cn(
+                  "p-2 hover:bg-gray-100 rounded-full transition-colors",
+                  isResizing && "pointer-events-none"
+                )}
+                disabled={isResizing}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -124,9 +204,14 @@ export function SlidingLayout({
           {/* 内容区域 */}
           <div className="flex-1 overflow-hidden">
             {isBrowserActive ? (
-              <BrowserEmbedView className="h-full" />
+              <BrowserEmbedView 
+                className="h-full" 
+                style={{
+                  pointerEvents: isResizing ? 'none' : 'auto', // resize时禁用交互
+                }}
+              />
             ) : (
-              <div className="h-full overflow-auto p-4">
+              <div className="h-full overflow-y-auto p-4 hide-scrollbar message-scroll-container">
                 {sidePanel}
               </div>
             )}
@@ -138,7 +223,13 @@ export function SlidingLayout({
       {isRightPanelOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-20 z-40"
-          onClick={isBrowserActive ? handleCloseBrowser : onClose}
+          onClick={() => {
+            if (isBrowserActive) {
+              handleCloseBrowser();
+            } else {
+              onClose();
+            }
+          }}
         />
       )}
     </div>

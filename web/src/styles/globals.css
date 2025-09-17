@@ -2,15 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 性能优化：GPU加速和will-change */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* 启用硬件加速 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* 防止水平滚动条，允许垂直滚动 */
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
+}
+
 body {
   color: #1f2937;
   font-family: "Inter", sans-serif;
   background-attachment: fixed;
+  /* 优化渲染性能 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 启用GPU加速 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* 防止水平滚动条，允许垂直滚动 */
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
 }
 
 input,
 textarea {
   outline: none;
+  /* 优化focus动画性能 */
+  will-change: border-color, box-shadow;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+input:focus,
+textarea:focus {
+  /* 使用GPU加速 */
+  transform: translateZ(0);
 }
 
 .markdown {
@@ -69,13 +105,15 @@ textarea {
     margin: 1rem 0;
     border-radius: 0.5rem;
     border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   }
 
   table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem;
-    min-width: 600px;
+    min-width: 100%;
+    table-layout: auto;
   }
 
   th,
@@ -83,7 +121,11 @@ textarea {
     border: 1px solid #e5e7eb;
     padding: 0.75rem;
     text-align: left;
-    white-space: nowrap;
+    vertical-align: top;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+    line-height: 1.5;
   }
 
   th {
@@ -92,6 +134,7 @@ textarea {
     color: #374151;
     position: sticky;
     top: 0;
+    white-space: nowrap;
   }
 
   tr:nth-child(even) {
@@ -103,9 +146,22 @@ textarea {
   }
 
   td {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 120px;
+    max-width: 300px;
+  }
+
+  /* 响应式表格 */
+  @media (max-width: 768px) {
+    .table-container {
+      font-size: 0.75rem;
+    }
+    
+    th,
+    td {
+      padding: 0.5rem;
+      min-width: 80px;
+      max-width: 200px;
+    }
   }
 
   /* 处理长文本内容 */
@@ -135,35 +191,51 @@ textarea {
   overflow: hidden;
 }
 
-/* 增强的卡片样式 */
+/* 增强的卡片样式 - 添加性能优化 */
 .enhanced-card {
-  @apply rounded-lg border border-gray-200/50 bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200;
+  @apply rounded-lg border border-gray-200/50 bg-white/80 backdrop-blur-md shadow-sm;
+  /* 优化hover动画性能 */
+  will-change: transform, box-shadow, border-color;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  /* 启用GPU加速 */
+  transform: translateZ(0);
 }
 
 .enhanced-card:hover {
-  @apply border-gray-300/50 shadow-lg shadow-gray-200/20 transform scale-[1.02];
+  @apply border-gray-300/50 shadow-lg shadow-gray-200/20;
+  /* 使用3D变换提升性能 */
+  transform: translate3d(0, -1px, 0) scale(1.02);
 }
 
-/* 模态框动画 */
+/* 模态框动画 - 优化性能 */
 .modal-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center;
   background-color: rgba(249, 250, 251, 0.8); /* 浅灰色背景 */
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* 优化动画性能 */
+  will-change: opacity;
+  /* 启用GPU加速 */
+  transform: translateZ(0);
 }
 
 .modal-content {
   @apply relative max-h-[90vh] w-[90vw] max-w-2xl overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-lg;
   animation: modalSlideIn 0.3s ease-out;
+  /* 优化动画性能 */
+  will-change: opacity, transform;
+  /* 启用GPU加速 */
+  transform: translateZ(0);
 }
 
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(-20px);
+    transform: translate3d(0, -20px, 0) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -178,6 +250,141 @@ textarea {
 
 .gradient-product {
   @apply bg-gradient-to-r from-pink-50/60 to-rose-50/60 border border-gray-200/60 text-pink-800 backdrop-blur-sm;
+}
+
+/* 性能优化通用类 */
+/* 滚动容器优化 */
+.scroll-container {
+  /* 优化滚动性能 */
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 动画元素通用优化 */
+.animate-element {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* 过渡动画优化 */
+.transition-optimized {
+  will-change: transform;
+  transform: translateZ(0);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 防止resize时的布局抖动 */
+.resize-stable {
+  contain: layout style paint;
+}
+
+/* 高性能按钮动画 */
+.btn-optimized {
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn-optimized:hover {
+  transform: translate3d(0, -1px, 0);
+}
+
+.btn-optimized:active {
+  transform: translate3d(0, 0, 0);
+}
+
+/* 渐变背景优化 */
+.gradient-flight,
+.gradient-hotel,
+.gradient-product {
+  /* 启用GPU加速 */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 表格性能优化 */
+.markdown table {
+  /* 优化表格渲染 */
+  contain: layout style;
+}
+
+.markdown tr:hover {
+  /* 优化hover性能 */
+  will-change: background-color;
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* 防止动画期间的重绘 */
+.no-repaint {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* 优化长列表渲染 */
+.virtual-list-item {
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* 自定义滚动条样式 - 隐藏滚动条但保持功能 */
+.hide-scrollbar {
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* 消息容器专用滚动条样式 */
+.message-scroll-container {
+  /* 美观的滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  /* 确保滚动平滑 */
+  scroll-behavior: smooth;
+  /* 优化滚动性能 */
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Webkit浏览器滚动条样式 */
+.message-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.message-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.message-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.6);
+}
+
+.message-scroll-container::-webkit-scrollbar-thumb:active {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+/* 防止水平滚动条 */
+.no-horizontal-scroll {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* 确保容器不超出视口宽度 */
+.viewport-constrained {
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .gradient-news {

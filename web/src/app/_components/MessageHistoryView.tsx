@@ -1,187 +1,389 @@
-import React, { useEffect, useRef, useState } from "react";
-import { nanoid } from "nanoid";
-import { type Message } from "~/core/messaging";
-import { cn } from "~/core/utils";
-import { sendMessage, useStore, setResponding, addMessage, updateMessage } from "~/core/store";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { Message } from '@/core/types/message';
+import { Markdown } from '@/core/components/Markdown';
+import { WorkflowProgressView } from './WorkflowProgressView';
+import { LoadingAnimation } from '@/core/components/LoadingAnimation';
+import { Copy, RotateCcw, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useMessageStore } from '@/core/store/messageStore';
+import { useSessionStore } from '@/core/store/sessionStore';
+import { useSettingsStore } from '~/core/store/settingsStore';
+import { generateAIResponse } from '@/core/api/chat';
+import { MediaCard } from './MediaCard';
+import { ToolCallView } from './ToolCallView';
+import { cn } from '~/core/utils';
 
-import { LoadingAnimation } from "./LoadingAnimation";
-import { Markdown } from "./Markdown";
-import { WorkflowProgressView } from "./WorkflowProgressView";
+// 防抖工具函数
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
-export function MessageHistoryView({
-  className,
-  messages,
-  loading,
-}: {
-  className?: string;
+// 节流工具函数
+const throttle = (func: Function, limit: number) => {
+  let inThrottle: boolean;
+  return function executedFunction(...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
+
+interface MessageHistoryViewProps {
   messages: Message[];
-  loading?: boolean;
-}) {
+  responding: boolean;
+  abortController?: AbortController;
+  className?: string;
+}
+
+export function MessageHistoryView({ messages, responding, abortController, className }: MessageHistoryViewProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const [scrollTimeout, setScrollTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isWindowVisible, setIsWindowVisible] = useState(true);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
 
-  // 检测用户是否在手动滚动
+  // 防抖处理滚动事件
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 窗口可见性检测
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsWindowVisible(!document.hidden);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
+  // resize事件防抖处理
+  const handleResize = useCallback(
+    debounce(() => {
+      setIsResizing(false);
+    }, 300),
+    []
+  );
+  
+  useEffect(() => {
+    const handleResizeStart = () => {
+      setIsResizing(true);
+      handleResize();
+    };
+    
+    window.addEventListener('resize', handleResizeStart);
+    return () => {
+      window.removeEventListener('resize', handleResizeStart);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+    };
+  }, [handleResize]);
+  
+  // 优化的防抖滚动处理
+  const handleScroll = useCallback(
+    throttle(() => {
+      if (isResizing || !isWindowVisible) return; // resize或窗口不可见时跳过
+      
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      debounceTimeoutRef.current = setTimeout(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+        
+        if (!isAtBottom) {
+          setIsUserScrolling(true);
+          
+          if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+          }
+          
+          scrollTimeoutRef.current = setTimeout(() => {
+            setIsUserScrolling(false);
+          }, 5000);
+        } else {
+          setIsUserScrolling(false);
+          if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+            scrollTimeoutRef.current = null;
+          }
+        }
+      }, 100);
+    }, 16), // 约60fps的节流
+    [isResizing, isWindowVisible]
+  );
+
+  // 处理滚动条区域的鼠标滚轮事件
+  const handleWheelEvent = useCallback((e: WheelEvent) => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50; // 50px容差
+    // 检查是否在容器内部滚动
+    const rect = container.getBoundingClientRect();
+    const isInContainer = e.clientX >= rect.left && e.clientX <= rect.right && 
+                         e.clientY >= rect.top && e.clientY <= rect.bottom;
+
+    if (isInContainer) {
+      // 检查容器是否可以滚动
+      const canScrollDown = container.scrollTop < container.scrollHeight - container.clientHeight;
+      const canScrollUp = container.scrollTop > 0;
+      const isScrollingDown = e.deltaY > 0;
+      const isScrollingUp = e.deltaY < 0;
       
-      if (!isAtBottom) {
-        setIsUserScrolling(true);
-        
-        // 清除之前的定时器
-        if (scrollTimeout) {
-          clearTimeout(scrollTimeout);
-        }
-        
-        // 设置新的定时器，3秒后重置滚动状态
-        const timeout = setTimeout(() => {
-          setIsUserScrolling(false);
-        }, 3000);
-        setScrollTimeout(timeout);
-      } else {
-        setIsUserScrolling(false);
-        if (scrollTimeout) {
-          clearTimeout(scrollTimeout);
-          setScrollTimeout(null);
-        }
+      // 只有当容器内部滚动到边界时才允许页面滚动
+      if ((isScrollingDown && canScrollDown) || (isScrollingUp && canScrollUp)) {
+        // 阻止页面滚动，让容器内部滚动
+        e.preventDefault();
+        e.stopPropagation();
+        container.scrollTop += e.deltaY;
       }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-    };
-  }, [scrollTimeout]);
-
-  // 只在用户没有手动滚动时才自动滚动到底部
-  useEffect(() => {
-    if (!isUserScrolling) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
+      // 如果容器已经滚动到边界，不阻止事件，让页面正常滚动
     }
-  }, [messages, loading, isUserScrolling]);
+  }, []);
+
+  // 使用IntersectionObserver优化滚动检测
+  useEffect(() => {
+    const container = containerRef.current;
+    const endElement = endRef.current;
+    if (!container || !endElement) return;
+
+    // 创建IntersectionObserver来检测是否在底部
+    intersectionObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          setIsUserScrolling(false);
+          if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+            scrollTimeoutRef.current = null;
+          }
+        }
+      },
+      {
+        root: container,
+        threshold: 0.1,
+      }
+    );
+    
+    intersectionObserverRef.current.observe(endElement);
+    
+    // 只在窗口可见且非resize状态时添加事件监听
+    if (isWindowVisible && !isResizing) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      container.addEventListener('wheel', handleWheelEvent, { passive: false });
+    }
+    
+    return () => {
+      if (intersectionObserverRef.current) {
+        intersectionObserverRef.current.disconnect();
+      }
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('wheel', handleWheelEvent);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [handleScroll, handleWheelEvent, isWindowVisible, isResizing]);
+
+  // 优化的自动滚动逻辑
+  useEffect(() => {
+    if (!isUserScrolling && isWindowVisible && !isResizing) {
+      // 使用requestAnimationFrame确保DOM更新完成后再滚动
+      const scrollToBottom = () => {
+        requestAnimationFrame(() => {
+          const container = containerRef.current;
+          if (container) {
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+            
+            if (isNearBottom || responding) {
+              endRef.current?.scrollIntoView({ 
+                behavior: isResizing ? 'auto' : 'smooth' // resize时使用auto避免动画卡顿
+              });
+            }
+          }
+        });
+      };
+      
+      // 如果正在resize，延迟滚动
+      if (isResizing) {
+        setTimeout(scrollToBottom, 100);
+      } else {
+        scrollToBottom();
+      }
+    }
+  }, [messages, responding, isUserScrolling, isWindowVisible, isResizing]);
 
   return (
-    <div ref={containerRef} className={cn(className, "overflow-y-auto flex flex-col")}>
+    <div 
+      ref={containerRef}
+      className={`
+        w-full h-full
+        ${className || ''}
+      `}
+      style={{
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
       <div className="flex-1" />
       <div className="flex-shrink-0">
         {messages.map((message) => (
-          <MessageView key={message.id} message={message} />
+          <MessageView 
+            key={message.id} 
+            message={message} 
+            abortController={abortController} 
+            messages={messages}
+            isWindowVisible={isWindowVisible}
+            isResizing={isResizing}
+          />
         ))}
-        {loading && <LoadingAnimation className="mt-8" />}
+        {responding && (
+          <div className="flex justify-start mb-8">
+            <div className="flex-shrink-0 mr-3 mt-1">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                AI
+              </div>
+            </div>
+            <div className="bg-[#fefefe] border border-gray-100 rounded-lg px-4 py-3 shadow-sm">
+              <LoadingAnimation />
+            </div>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
     </div>
   );
 }
 
-function MessageView({ message }: { message: Message }) {
+const MessageView = React.memo(({ message, abortController, messages, isWindowVisible, isResizing }: { 
+  message: Message; 
+  abortController?: AbortController; 
+  messages: Message[];
+  isWindowVisible?: boolean;
+  isResizing?: boolean;
+}) => {
   const [isHovered, setIsHovered] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const { deleteMessage, updateMessage } = useMessageStore();
+  const { currentSessionId } = useSessionStore();
+  const { settings } = useSettingsStore();
   
-  const handleCopy = async () => {
-    if (message.type === "text" && message.content) {
+  const handleCopy = useCallback(async () => {
+    if (message.content && typeof message.content === 'string') {
       try {
         await navigator.clipboard.writeText(message.content);
         setCopySuccess(true);
+        toast.success('已复制到剪贴板');
         setTimeout(() => setCopySuccess(false), 2000);
       } catch (err) {
         console.error('复制失败:', err);
+        toast.error('复制失败');
       }
     }
-  };
+  }, [message.content]);
   
-  const handleRetry = async () => {
-    if (message.type === "text" && message.role === "assistant") {
-      const messages = useStore.getState().messages;
-      const currentIndex = messages.findIndex(m => m.id === message.id);
-      
-      if (currentIndex > 0) {
-        // 找到前一条用户消息
-        const userMessage = messages[currentIndex - 1];
-        if (userMessage && userMessage.role === "user") {
-          // 删除当前AI回复
-          const newMessages = messages.filter(m => m.id !== message.id);
-          useStore.setState({ messages: newMessages });
-          
-          // 从localStorage读取当前的深度思考模式配置
-          const { getInputConfigSync } = await import('~/core/utils/config');
-          const config = getInputConfigSync();
-          
-          // 使用store中的sendMessage函数重新生成回复
-          await sendMessage(userMessage, config);
-        }
+  const handleRetry = useCallback(async () => {
+    if (message.role === "assistant" && currentSessionId && abortController) {
+      try {
+        // 删除当前AI回复
+        deleteMessage(message.id);
+        
+        // 重新生成回复
+        await generateAIResponse({
+          messages: messages.slice(0, -1), // 排除当前消息
+          sessionId: currentSessionId,
+          abortController,
+          settings
+        });
+      } catch (error) {
+        console.error('重新生成失败:', error);
+        toast.error('重新生成失败');
       }
     }
-  };
+  }, [message.id, message.role, currentSessionId, deleteMessage, abortController, messages, settings]);
   
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (message.role === "assistant") {
-      const messages = useStore.getState().messages;
-      const newMessages = messages.filter(m => m.id !== message.id);
-      useStore.setState({ messages: newMessages });
+      deleteMessage(message.id);
+      toast.success('消息已删除');
     }
-  };
-  
-  console.log("Rendering message:", message);
+  }, [message.id, message.role, deleteMessage]);
   
   // 渲染多模态消息内容的函数
-  const renderContent = () => {
-
-    if (message.type === "text" && typeof message.content === "string") {
+  const renderContent = useMemo(() => {
+    if (typeof message.content === "string" && message.content.trim()) {
       return (
         <Markdown
+          content={message.content}
           className={cn(
             "prose prose-sm max-w-none break-words text-sm",
             message.role === "user" && "prose-invert",
             message.role === "assistant" && "prose-gray"
           )}
-          components={{
-            a: ({ href, children }) => (
-              <a 
-                href={href} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className={cn(
-                  "underline transition-colors",
-                  message.role === "user" ? "text-blue-200 hover:text-white" : "text-blue-600 hover:text-blue-800"
-                )}
-              >
-                {children}
-              </a>
-            ),
-            p: ({ children }) => (
-              <p className="mb-1.5 last:mb-0 text-sm leading-relaxed">{children}</p>
-            ),
-            code: ({ children, className }) => {
-              const isInline = !className;
-              return isInline ? (
-                <code className={cn(
-                  "px-1 py-0.5 rounded text-xs font-mono whitespace-pre-wrap",
-                  message.role === "user" ? "bg-blue-700 text-blue-100" : "bg-gray-100 text-gray-800"
-                )}>
-                  {children}
-                </code>
-              ) : (
-                <code className={cn(className, "whitespace-pre-wrap")} >{children}</code>
-              );
-            },
-          }}
-        >
-          {message.content}
-        </Markdown>
+        />
       );
     }
+    
+    if (Array.isArray(message.content)) {
+      return (
+        <div className="space-y-2">
+          {message.content.map((item, index) => {
+            if (item.type === 'text' && item.text) {
+              return (
+                <Markdown 
+                  key={index} 
+                  content={item.text}
+                  className="prose prose-sm max-w-none break-words text-sm"
+                />
+              );
+            }
+            if (item.type === 'image_url') {
+              return (
+                <MediaCard
+                  key={index}
+                  type="image"
+                  src={item.image_url.url}
+                  className="max-w-sm"
+                />
+              );
+            }
+            if (item.type === 'tool_call') {
+              return (
+                <ToolCallView
+                  key={index}
+                  toolCall={item}
+                />
+              );
+            }
+            return null;
+          })}
+        </div>
+      );
+    }
+    
     return null;
-  };
+  }, [message.content, message.role]);
 
   if ((message.type === "text" && message.content) || (message.type === "multimodal" && Array.isArray(message.content))) {
     return (
@@ -205,7 +407,7 @@ function MessageView({ message }: { message: Message }) {
               message.role === "assistant" && "bg-[#fefefe] border border-gray-100 text-gray-800 shadow-sm md:max-w-[85%] lg:max-w-[80%] xl:max-w-[75%]",
             )}
           >
-            {renderContent()}
+            {renderContent}
           </div>
           
           {/* 操作按钮 - 根据角色显示不同按钮 */}
@@ -294,4 +496,6 @@ function MessageView({ message }: { message: Message }) {
     );
   }
   return null;
-}
+});
+
+MessageView.displayName = 'MessageView';

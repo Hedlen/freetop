@@ -14,7 +14,13 @@ interface GenericMessage<
 
 export interface TextMessage extends GenericMessage<"text", string> {}
 
+export interface MultiModalMessage extends GenericMessage<"multimodal", {
+  text?: string;
+  images?: string[];
+  files?: string[];
+}> {}
+
 export interface WorkflowMessage
   extends GenericMessage<"workflow", { workflow: Workflow }> {}
 
-export type Message = TextMessage | WorkflowMessage;
+export type Message = TextMessage | MultiModalMessage | WorkflowMessage;

@@ -39,7 +39,7 @@ export default {
     },
   },
   plugins: [
-    function({ addUtilities }) {
+    function({ addUtilities }: { addUtilities: any }) {
       addUtilities({
         '.scrollbar-hide': {
           /* IE and Edge */

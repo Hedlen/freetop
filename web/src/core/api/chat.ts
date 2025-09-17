@@ -7,19 +7,22 @@ import { type ChatEvent } from "./types";
 
 export function chatStream(
   userMessage: Message,
-  state: { messages: { role: string; content: string | any[] }[] },
+  state: { messages: Message[] },
   params: { deepThinkingMode: boolean; searchBeforePlanning: boolean },
   options: { abortSignal?: AbortSignal } = {},
 ) {
   // 转换消息格式以适配后端API
-  const convertedMessage = {
-    role: userMessage.role,
-    content: userMessage.type === 'multimodal' ? userMessage.content : userMessage.content,
-  };
+  const convertMessage = (msg: Message) => ({
+    role: msg.role,
+    content: msg.type === 'multimodal' ? msg.content : msg.content,
+  });
+  
+  const convertedMessages = state.messages.map(convertMessage);
+  const convertedUserMessage = convertMessage(userMessage);
   
   return fetchStream<ChatEvent>(env.NEXT_PUBLIC_API_URL + "/chat/stream", {
     body: JSON.stringify({
-      messages: [...state.messages, convertedMessage],
+      messages: [...convertedMessages, convertedUserMessage],
       deep_thinking_mode: params.deepThinkingMode,
       search_before_planning: params.searchBeforePlanning,
       debug:
@@ -112,5 +115,50 @@ export async function abortAllUserTasks(): Promise<{ status: string; message: st
       throw error;
     }
     throw new Error(`Failed to abort user tasks: ${error}`);
+  }
+}
+
+export async function generateAIResponse(params: {
+  messages: Message[];
+  sessionId: string;
+  abortController: AbortController;
+  settings: any;
+}): Promise<void> {
+  const { messages, sessionId, abortController, settings } = params;
+  
+  // 创建状态对象
+  const state = {
+    messages: messages
+  };
+  
+  // 创建用户消息对象（最后一条消息）
+  const lastMessage = messages[messages.length - 1];
+  
+  // 调用chatStream生成AI回复
+  const stream = chatStream(
+    lastMessage,
+    state,
+    {
+      deepThinkingMode: settings?.deepThinkingMode || false,
+      searchBeforePlanning: settings?.searchBeforePlanning || false
+    },
+    {
+      abortSignal: abortController.signal
+    }
+  );
+  
+  // 处理流式响应
+  try {
+    for await (const event of stream) {
+      // 这里可以根据需要处理流式事件
+      // 例如更新消息状态、显示进度等
+      console.log('Stream event:', event);
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('Request was aborted');
+      return;
+    }
+    throw error;
   }
 }

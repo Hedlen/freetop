@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { cn } from '~/core/utils';
 
@@ -19,21 +20,59 @@ interface UserDropdownProps {
 export function UserDropdown({ user, onLogout }: UserDropdownProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // 计算下拉菜单位置
+  const calculatePosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      
+      setDropdownPosition({
+        top: rect.bottom + scrollY + 8, // 8px gap
+        left: rect.right + scrollX - 224 // 224px is dropdown width (w-56)
+      });
+    }
+  }, []);
 
   // 点击外部关闭下拉菜单
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    const target = event.target as Element;
+    
+    // 检查是否点击在按钮或下拉菜单内
+    if (buttonRef.current && buttonRef.current.contains(target)) {
+      return; // 点击按钮，不关闭
     }
+    
+    if (dropdownRef.current && dropdownRef.current.contains(target)) {
+      return; // 点击下拉菜单内，不关闭
+    }
+    
+    // 点击外部，关闭下拉菜单
+    setIsOpen(false);
+  }, []);
 
-    document.addEventListener('mousedown', handleClickOutside);
+  useEffect(() => {
+    if (isOpen) {
+      calculatePosition();
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('scroll', calculatePosition);
+      window.addEventListener('resize', calculatePosition);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', calculatePosition);
+      window.removeEventListener('resize', calculatePosition);
+    }
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', calculatePosition);
+      window.removeEventListener('resize', calculatePosition);
     };
-  }, []);
+  }, [isOpen, handleClickOutside, calculatePosition]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -47,9 +86,10 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" data-dropdown="user-dropdown">
       {/* 用户头像按钮 */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/10 transition-colors"
       >
@@ -80,9 +120,21 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
         </svg>
       </button>
 
-      {/* 下拉菜单 */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-md rounded-xl border border-gray-200 shadow-2xl z-50">
+      {/* 下拉菜单 - 使用Portal渲染到body */}
+      {isOpen && typeof window !== 'undefined' && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="w-56 bg-white/95 backdrop-blur-md rounded-xl border border-gray-200 shadow-2xl user-dropdown"
+          data-user-dropdown="true"
+          role="menu"
+          style={{ 
+            position: 'fixed',
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            zIndex: 999999,
+            pointerEvents: 'auto'
+          }}
+        >
           {/* 用户信息 */}
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center space-x-3">
@@ -106,38 +158,55 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
 
           {/* 菜单项 */}
           <div className="py-2">
-            <button
-              onClick={() => {
+            {/* 个人中心 - 简化版本 */}
+            <a
+              href="/profile"
+              className="w-full px-4 py-2 text-left text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors flex items-center space-x-3 cursor-pointer block"
+              onClick={(e) => {
+                console.log('个人中心 Link onClick 被触发', e);
+                e.preventDefault();
                 setIsOpen(false);
-                router.push('/profile');
+                console.log('准备跳转到 /profile');
+                window.location.href = '/profile';
               }}
-              className="w-full px-4 py-2 text-left text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors flex items-center space-x-3"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               <span className="text-sm">个人中心</span>
-            </button>
+            </a>
 
-            <button
-              onClick={() => {
+            {/* 系统设置 - 简化版本 */}
+            <a
+              href="/settings"
+              className="w-full px-4 py-2 text-left text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors flex items-center space-x-3 cursor-pointer block"
+              onClick={(e) => {
+                console.log('系统设置 Link onClick 被触发', e);
+                e.preventDefault();
                 setIsOpen(false);
-                router.push('/settings');
+                console.log('准备跳转到 /settings');
+                window.location.href = '/settings';
               }}
-              className="w-full px-4 py-2 text-left text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors flex items-center space-x-3"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <span className="text-sm">系统设置</span>
-            </button>
+            </a>
 
             <div className="border-t border-gray-200 my-2"></div>
 
+            {/* 退出登录 - 简化版本 */}
             <button
-              onClick={handleLogout}
-              className="w-full px-4 py-2 text-left text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors flex items-center space-x-3"
+              type="button"
+              className="w-full px-4 py-2 text-left text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors flex items-center space-x-3 cursor-pointer"
+              onClick={(e) => {
+                console.log('退出登录 Button onClick 被触发', e);
+                e.preventDefault();
+                console.log('准备执行退出登录');
+                handleLogout();
+              }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -145,7 +214,8 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
               <span className="text-sm">退出登录</span>
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

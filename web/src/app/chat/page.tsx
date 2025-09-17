@@ -273,11 +273,11 @@ export default function HomePage() {
           {/* Header - 使用AppHeader组件 */}
           <AppHeader />
         
-          {/* Main Chat Area */}
-          <div className="flex flex-1 justify-center overflow-hidden bg-[#faf9f6]">
-            <div className="flex w-full max-w-full flex-col px-4">
-              {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto pb-[120px]">
+          {/* Main Chat Area - 使用flex布局，占据除header和input外的所有空间 */}
+          <div className="flex flex-1 justify-center bg-[#faf9f6] overflow-hidden">
+            <div className="flex w-full max-w-full flex-col px-4 no-horizontal-scroll h-full">
+              {/* Messages Container - 独立滚动区域 */}
+              <div className="flex-1 overflow-y-auto no-horizontal-scroll viewport-constrained message-scroll-container">
                 {isClient && messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center px-4">
                     <div className="text-center max-w-2xl">
@@ -317,48 +317,48 @@ export default function HomePage() {
                     </div>
                   </div>
                 ) : (
-                  <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">
+                  <div className="h-full p-2 sm:p-4 md:p-6">
                     <div className="mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl h-full px-2 sm:px-4 md:px-6 lg:px-8">
-                      <MessageHistoryView messages={messages} loading={responding} className="h-full" />
+                      <MessageHistoryView messages={messages} responding={responding} className="h-full" />
                     </div>
-                  </main>
-                )}
-            </div>
-            
-              {/* Input Area */}
-        <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-3 bg-[#faf9f6]/80 backdrop-blur-md border-t border-gray-200/50">
-          <div className="mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-2 sm:px-4 md:px-6 lg:px-8">
-                  <div className="relative">
-                    {user ? (
-                      <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:shadow-3xl transition-all duration-300 hover:bg-white/15">
-                        <InputBox
-                          onSend={handleSendMessage}
-                          onCancel={handleAbortTask}
-                          responding={responding}
-                          size="normal"
-                        />
-                      </div>
-                    ) : (
-                      <div className="overflow-hidden rounded-2xl border border-orange-200 bg-orange-50/90 backdrop-blur-md shadow-lg">
-                        <div className="p-6 text-center">
-                          <div className="mb-4">
-                            <svg className="w-12 h-12 text-orange-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">需要登录才能使用</h3>
-                            <p className="text-gray-600 mb-4">请先登录您的账户以开始对话</p>
-                          </div>
-                          <button
-                            onClick={() => setShowLoginModal(true)}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                          >
-                            立即登录
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
+          </div>
+            
+          {/* Input Area - 固定在底部 */}
+          <div className="flex-shrink-0 p-2 sm:p-3 bg-[#faf9f6]/80 backdrop-blur-md border-t border-gray-200/50">
+            <div className="mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-2 sm:px-4 md:px-6 lg:px-8">
+              <div className="relative">
+                {user ? (
+                  <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:shadow-3xl transition-all duration-300 hover:bg-white/15">
+                    <InputBox
+                      onSend={handleSendMessage}
+                      onCancel={handleAbortTask}
+                      responding={responding}
+                      size="normal"
+                    />
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-2xl border border-orange-200 bg-orange-50/90 backdrop-blur-md shadow-lg">
+                    <div className="p-6 text-center">
+                      <div className="mb-4">
+                        <svg className="w-12 h-12 text-orange-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">需要登录才能使用</h3>
+                        <p className="text-gray-600 mb-4">请先登录您的账户以开始对话</p>
+                      </div>
+                      <button
+                        onClick={() => setShowLoginModal(true)}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        立即登录
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

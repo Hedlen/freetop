@@ -95,6 +95,9 @@ FreeTop is built upon the incredible foundation provided by [LangManus](https://
 git clone https://github.com/Hedlen/freetop.git
 cd freetop
 
+# Install uv if not already installed (Windows PowerShell)
+# irm https://astral.sh/uv/install.ps1 | iex
+
 # Install dependencies, uv will take care of the python interpreter and venv creation
 uv sync
 
@@ -260,6 +263,21 @@ We welcome contributions of all kinds - code, documentation, bug reports, featur
 ### Prerequisites
 
 - [uv](https://github.com/astral-sh/uv) package manager
+
+**Install uv:**
+
+```bash
+# On Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
+
+# On macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Alternative: Install via pip
+pip install uv
+```
+
+> **Note**: After installation, you may need to restart your terminal or add uv to your PATH.
 
 ### Installation
 

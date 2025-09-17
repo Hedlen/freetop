@@ -193,9 +193,29 @@ export default function SettingsPage() {
           if (response.ok) {
             const result = await response.json();
             if (result.success && Object.keys(result.settings).length > 0) {
-               // 如果后端有设置，使用后端设置并同步到本地
-               setSettings(result.settings);
-               localStorage.setItem('system_settings', JSON.stringify(result.settings));
+               // 如果后端有设置，合并默认设置以确保完整性
+               const mergedSettings = {
+                 ...defaultSettings,
+                 ...result.settings,
+                 llm: {
+                   ...defaultSettings.llm,
+                   ...result.settings.llm,
+                   reasoning: {
+                     ...defaultSettings.llm.reasoning,
+                     ...result.settings.llm?.reasoning
+                   },
+                   basic: {
+                     ...defaultSettings.llm.basic,
+                     ...result.settings.llm?.basic
+                   },
+                   vision: {
+                     ...defaultSettings.llm.vision,
+                     ...result.settings.llm?.vision
+                   }
+                 }
+               };
+               setSettings(mergedSettings);
+               localStorage.setItem('system_settings', JSON.stringify(mergedSettings));
                setSyncStatus('synced');
                return;
              }
@@ -221,10 +241,38 @@ export default function SettingsPage() {
       // 如果后端加载失败或没有设置，从本地存储加载
       const savedSettings = localStorage.getItem('system_settings');
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        try {
+          const parsedSettings = JSON.parse(savedSettings);
+          // 合并默认设置以确保完整性
+          const mergedSettings = {
+            ...defaultSettings,
+            ...parsedSettings,
+            llm: {
+              ...defaultSettings.llm,
+              ...parsedSettings.llm,
+              reasoning: {
+                ...defaultSettings.llm.reasoning,
+                ...parsedSettings.llm?.reasoning
+              },
+              basic: {
+                ...defaultSettings.llm.basic,
+                ...parsedSettings.llm?.basic
+              },
+              vision: {
+                ...defaultSettings.llm.vision,
+                ...parsedSettings.llm?.vision
+              }
+            }
+          };
+          setSettings(mergedSettings);
+        } catch (parseError) {
+          console.error('解析本地设置失败:', parseError);
+          setSettings(defaultSettings);
+        }
       }
     } catch (error) {
       console.error('加载设置失败:', error);
+      setSettings(defaultSettings);
     }
   };
 
@@ -437,28 +485,160 @@ export default function SettingsPage() {
     setMessage('设置已重置为默认值');
   };
 
+  const validateApiKey = (apiKey: string): boolean => {
+    if (!apiKey || apiKey.trim() === '') return false;
+    // 检查是否为占位符
+    if (apiKey.includes('your-key-here') || apiKey.includes('sk-xxx')) return false;
+    // 基本长度检查
+    return apiKey.length >= 10;
+  };
+
+  const validateUrl = (url: string): boolean => {
+    if (!url || url.trim() === '') return true; // URL可以为空
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const validateTemperature = (temp: number): boolean => {
+    return temp >= 0 && temp <= 2;
+  };
+
+  const validateMaxTokens = (tokens: number): boolean => {
+    return tokens > 0 && tokens <= 100000;
+  };
+
   const updateLLMConfig = (type: keyof MultiLLMConfig, field: keyof LLMConfig, value: any) => {
+    // 验证输入值
+    let isValid = true;
+    let errorMessage = '';
+
+    if (field === 'api_key' && !validateApiKey(value)) {
+      isValid = false;
+      errorMessage = 'API Key格式无效或为占位符';
+    } else if (field === 'base_url' && !validateUrl(value)) {
+      isValid = false;
+      errorMessage = 'Base URL格式无效';
+    } else if (field === 'temperature' && !validateTemperature(value)) {
+      isValid = false;
+      errorMessage = 'Temperature必须在0-2之间';
+    } else if (field === 'max_tokens' && !validateMaxTokens(value)) {
+      isValid = false;
+      errorMessage = 'Max Tokens必须在1-100000之间';
+    }
+
+    if (!isValid) {
+      setMessage(errorMessage);
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     setSettings(prev => ({
       ...prev,
       llm: {
+        ...defaultSettings.llm,
         ...prev.llm,
-        [type]: { ...prev.llm[type], [field]: value }
+        [type]: { 
+          ...defaultSettings.llm[type],
+          ...(prev.llm?.[type] || {}), 
+          [field]: value 
+        }
       }
     }));
+    
+    // 清除之前的错误消息
+    if (message && !message.includes('成功')) {
+      setMessage('');
+    }
+  };
+
+  const validateCrawlerConfig = (field: keyof CrawlerConfig, value: any): { isValid: boolean; errorMessage: string } => {
+    switch (field) {
+      case 'max_pages':
+        if (typeof value !== 'number' || value < 1 || value > 1000) {
+          return { isValid: false, errorMessage: '最大页面数必须在1-1000之间' };
+        }
+        break;
+      case 'timeout':
+        if (typeof value !== 'number' || value < 1 || value > 300) {
+          return { isValid: false, errorMessage: '超时时间必须在1-300秒之间' };
+        }
+        break;
+      case 'delay':
+        if (typeof value !== 'number' || value < 0 || value > 10) {
+          return { isValid: false, errorMessage: '请求延迟必须在0-10秒之间' };
+        }
+        break;
+      case 'user_agent':
+        if (typeof value === 'string' && value.length > 500) {
+          return { isValid: false, errorMessage: 'User Agent长度不能超过500字符' };
+        }
+        break;
+      case 'tavily_api_key':
+        if (typeof value === 'string' && value.trim() !== '' && !validateApiKey(value)) {
+          return { isValid: false, errorMessage: 'Tavily API Key格式无效' };
+        }
+        break;
+    }
+    return { isValid: true, errorMessage: '' };
   };
 
   const updateCrawlerConfig = (field: keyof CrawlerConfig, value: any) => {
+    const validation = validateCrawlerConfig(field, value);
+    if (!validation.isValid) {
+      setMessage(validation.errorMessage);
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     setSettings(prev => ({
       ...prev,
       crawler: { ...prev.crawler, [field]: value }
     }));
+    
+    // 清除之前的错误消息
+    if (message && !message.includes('成功')) {
+      setMessage('');
+    }
+  };
+
+  const validateBrowserConfig = (field: keyof BrowserConfig, value: any): { isValid: boolean; errorMessage: string } => {
+    switch (field) {
+      case 'proxy_url':
+        if (typeof value === 'string' && value.trim() !== '' && !validateUrl(value)) {
+          return { isValid: false, errorMessage: '代理URL格式无效' };
+        }
+        break;
+      case 'proxy_username':
+      case 'proxy_password':
+        if (typeof value === 'string' && value.length > 100) {
+          return { isValid: false, errorMessage: '代理用户名/密码长度不能超过100字符' };
+        }
+        break;
+    }
+    return { isValid: true, errorMessage: '' };
   };
 
   const updateBrowserConfig = (field: keyof BrowserConfig, value: any) => {
+    const validation = validateBrowserConfig(field, value);
+    if (!validation.isValid) {
+      setMessage(validation.errorMessage);
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     setSettings(prev => ({
       ...prev,
       browser: { ...prev.browser, [field]: value }
     }));
+    
+    // 清除之前的错误消息
+    if (message && !message.includes('成功')) {
+      setMessage('');
+    }
   };
 
   const tabs = [
@@ -502,10 +682,16 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-sm font-medium text-blue-800 mb-1">配置说明</h3>
               <div className="text-sm text-blue-700">
-                <p className="mb-2">这些设置将覆盖环境变量中的默认配置。如果前端没有设置，系统将使用 <code className="bg-blue-100 px-1 rounded">.env</code> 文件中的默认值。</p>
-                <p>• <strong>推理模型</strong>：用于复杂推理任务（如数学、逻辑推理）</p>
-                <p>• <strong>基础模型</strong>：用于一般对话和文本生成任务</p>
-                <p>• <strong>视觉模型</strong>：用于图像理解和多模态任务</p>
+                <p className="mb-2"><strong>配置优先级</strong>：前端页面设置 > 云端同步设置 > 本地存储 > 环境变量默认值</p>
+                <p className="mb-2">• 在此页面的所有设置都具有<strong>最高优先级</strong>，将覆盖所有其他配置源</p>
+                <p className="mb-2">• 开源版本无需配置.env文件，所有参数都可通过此界面完成设置</p>
+                <p className="mb-2">• 设置会自动保存到本地存储，登录用户还可同步到云端</p>
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <p className="font-medium mb-1">模型类型说明：</p>
+                  <p>• <strong>推理模型</strong>：用于复杂推理任务（如数学、逻辑推理）</p>
+                  <p>• <strong>基础模型</strong>：用于一般对话和文本生成任务</p>
+                  <p>• <strong>视觉模型</strong>：用于图像理解和多模态任务</p>
+                </div>
               </div>
             </div>
           </div>
@@ -622,7 +808,7 @@ export default function SettingsPage() {
                             服务提供商
                           </label>
                           <select
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].provider}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.provider || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].provider}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'provider', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
@@ -639,11 +825,11 @@ export default function SettingsPage() {
                             模型
                           </label>
                           <select
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].model}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.model || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].model}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'model', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
-                            {modelOptions[settings.llm[activeLLMTab as keyof MultiLLMConfig].provider]?.map((model) => (
+                            {modelOptions[settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.provider || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].provider]?.map((model) => (
                               <option key={model} value={model}>
                                 {model}
                               </option>
@@ -657,7 +843,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="password"
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].api_key}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.api_key || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].api_key}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'api_key', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="请输入API Key"
@@ -670,7 +856,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="url"
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].base_url}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.base_url || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].base_url}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'base_url', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="API基础URL"
@@ -679,14 +865,14 @@ export default function SettingsPage() {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Temperature ({settings.llm[activeLLMTab as keyof MultiLLMConfig].temperature})
+                            Temperature ({settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.temperature ?? defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].temperature})
                           </label>
                           <input
                             type="range"
                             min="0"
                             max="2"
                             step="0.1"
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].temperature}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.temperature ?? defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].temperature}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'temperature', parseFloat(e.target.value))}
                             className="w-full"
                           />
@@ -702,7 +888,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="number"
-                            value={settings.llm[activeLLMTab as keyof MultiLLMConfig].max_tokens}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.max_tokens ?? defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].max_tokens}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'max_tokens', parseInt(e.target.value))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             min="1"

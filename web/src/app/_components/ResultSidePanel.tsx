@@ -246,7 +246,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
                 <span className="text-gray-400 ml-2">Python REPL</span>
               </div>
               <div className="border-t border-gray-700 pt-2">
-                <div className="text-blue-400">>>> {task.payload.input?.code}</div>
+                <div className="text-blue-400">&gt;&gt;&gt; {task.payload.input?.code}</div>
                 {task.payload.output?.result && (
                   <div className="mt-2 text-white whitespace-pre-wrap">
                     {task.payload.output.result}

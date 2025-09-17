@@ -173,9 +173,47 @@ export function ContentDetailModal({
     };
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
+      const target = event.target as Element;
+      
+      console.log('ContentDetailModal handleClickOutside triggered', target);
+      
+      // 检查是否点击了 UserDropdown 或其子元素
+      if (target.closest('[data-dropdown="user-dropdown"]') || 
+          target.closest('.user-dropdown') || 
+          target.closest('[data-user-dropdown]')) {
+        console.log('点击了 UserDropdown，不处理');
+        return; // 不处理 UserDropdown 的点击
       }
+      
+      // 检查是否点击了任何下拉菜单项
+      if (target.closest('[role="menuitem"]') || 
+          target.closest('[role="menu"]') || 
+          target.closest('.dropdown-menu')) {
+        console.log('点击了下拉菜单项，不处理');
+        return; // 不处理下拉菜单的点击
+      }
+      
+      // 检查是否点击了具有 tabIndex 的可交互元素（我们的新菜单项）
+      if (target.closest('[tabIndex="0"]')) {
+        console.log('点击了可交互元素，不处理');
+        return;
+      }
+      
+      // 检查是否点击了按钮
+      if (target.closest('button')) {
+        console.log('点击了按钮，不处理');
+        return; // 不处理按钮点击
+      }
+      
+      // 检查是否点击了模态框内容区域
+      if (target.closest('.modal-content')) {
+        console.log('点击了模态框内容，不处理');
+        return;
+      }
+      
+      console.log('点击了模态框外部，关闭模态框');
+      // 如果点击了模态框外部，关闭模态框
+      onClose();
     };
 
     if (isOpen) {
