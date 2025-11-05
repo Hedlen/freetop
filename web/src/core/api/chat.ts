@@ -114,7 +114,7 @@ export async function abortAllUserTasks(): Promise<{ status: string; message: st
     if (error instanceof Error && error.message.includes('Authentication failed')) {
       throw error;
     }
-    throw new Error(`Failed to abort user tasks: ${error}`);
+    throw new Error(`Failed to abort user tasks: ${String(error)}`);
   }
 }
 
@@ -124,7 +124,7 @@ export async function generateAIResponse(params: {
   abortController: AbortController;
   settings: any;
 }): Promise<void> {
-  const { messages, sessionId, abortController, settings } = params;
+  const { messages, abortController, settings } = params;
   
   // 创建状态对象
   const state = {
@@ -139,8 +139,8 @@ export async function generateAIResponse(params: {
     lastMessage,
     state,
     {
-      deepThinkingMode: settings?.deepThinkingMode || false,
-      searchBeforePlanning: settings?.searchBeforePlanning || false
+      deepThinkingMode: settings?.deepThinkingMode ?? false,
+      searchBeforePlanning: settings?.searchBeforePlanning ?? false
     },
     {
       abortSignal: abortController.signal

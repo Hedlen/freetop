@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeftIcon, 
-  CpuChipIcon, 
-  GlobeAltIcon, 
+import {
+  ArrowLeftIcon,
+  CpuChipIcon,
+  GlobeAltIcon,
   CommandLineIcon,
   CheckIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 
 interface LLMConfig {
   provider: string;
@@ -175,10 +175,10 @@ export default function SettingsPage() {
     }
 
     // 加载保存的设置
-    loadSettings();
-  }, [router]);
+    void loadSettings();
+  }, [router, loadSettings]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       // 首先尝试从后端加载设置
       const token = localStorage.getItem('auth_token');
@@ -274,7 +274,7 @@ export default function SettingsPage() {
       console.error('加载设置失败:', error);
       setSettings(defaultSettings);
     }
-  };
+  }, []);
 
   const saveSettings = async () => {
     setLoading(true);
@@ -438,7 +438,7 @@ export default function SettingsPage() {
       const result = await response.json();
       
       if (result.success) {
-        const proxyInfo = result.proxy_config ? `使用代理: ${result.proxy_config.server}` : '直连';
+        const proxyInfo = result.proxy_config ? `使用代理: ${String(result.proxy_config.server)}` : '直连';
         resultDiv.innerHTML = `
           <div class="text-green-600">
             <div>✓ 连接成功 (${result.response_time?.toFixed(2)}s)</div>
@@ -446,10 +446,10 @@ export default function SettingsPage() {
           </div>
         `;
       } else {
-        resultDiv.innerHTML = `<span class="text-red-600">✗ ${result.message}</span>`;
+        resultDiv.innerHTML = `<span class="text-red-600">✗ ${String(result.message)}</span>`;
       }
-    } catch (error) {
-      resultDiv.innerHTML = `<span class="text-red-600">✗ 测试失败: ${error}</span>`;
+    } catch (error: unknown) {
+      resultDiv.innerHTML = `<span class="text-red-600">✗ 测试失败: ${String(error)}</span>`;
     }
   };
   
@@ -468,15 +468,15 @@ export default function SettingsPage() {
         updateBrowserConfig('proxy_strategy', 'auto');
         resultDiv.innerHTML = `
           <div class="text-green-600">
-            <div>✓ 检测到系统代理: ${result.proxy_server}</div>
+            <div>✓ 检测到系统代理: ${String(result.proxy_server)}</div>
             <div class="text-sm text-gray-600">已自动填入代理服务器地址</div>
           </div>
         `;
       } else {
-        resultDiv.innerHTML = `<span class="text-yellow-600">⚠ ${result.message}</span>`;
+        resultDiv.innerHTML = `<span class="text-yellow-600">⚠ ${String(result.message)}</span>`;
       }
-    } catch (error) {
-      resultDiv.innerHTML = `<span class="text-red-600">✗ 自动检测失败: ${error}</span>`;
+    } catch (error: unknown) {
+      resultDiv.innerHTML = `<span class="text-red-600">✗ 自动检测失败: ${String(error)}</span>`;
     }
   };
 
@@ -682,7 +682,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-sm font-medium text-blue-800 mb-1">配置说明</h3>
               <div className="text-sm text-blue-700">
-                <p className="mb-2"><strong>配置优先级</strong>：前端页面设置 > 云端同步设置 > 本地存储 > 环境变量默认值</p>
+                <p className="mb-2"><strong>配置优先级</strong>：前端页面设置 &gt; 云端同步设置 &gt; 本地存储 &gt; 环境变量默认值</p>
                 <p className="mb-2">• 在此页面的所有设置都具有<strong>最高优先级</strong>，将覆盖所有其他配置源</p>
                 <p className="mb-2">• 开源版本无需配置.env文件，所有参数都可通过此界面完成设置</p>
                 <p className="mb-2">• 设置会自动保存到本地存储，登录用户还可同步到云端</p>
@@ -843,7 +843,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="password"
-                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.api_key || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].api_key}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.api_key ?? defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].api_key}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'api_key', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="请输入API Key"
@@ -856,7 +856,7 @@ export default function SettingsPage() {
                           </label>
                           <input
                             type="url"
-                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.base_url || defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].base_url}
+                            value={settings.llm?.[activeLLMTab as keyof MultiLLMConfig]?.base_url ?? defaultSettings.llm[activeLLMTab as keyof MultiLLMConfig].base_url}
                             onChange={(e) => updateLLMConfig(activeLLMTab as keyof MultiLLMConfig, 'base_url', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="API基础URL"

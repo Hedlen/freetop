@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ContentDetailModal } from '../ContentDetailModal';
 import '@testing-library/jest-dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { ContentDetailModal } from '../ContentDetailModal';
 
 // Mock useGifCache hook
 jest.mock('../../_hooks/useGifCache', () => ({

@@ -1,11 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+
 import { cn } from "~/core/utils";
-import { type ToolCallTask } from "~/core/workflow";
-import { EnhancedSearchResults } from "./EnhancedSearchResults";
-import { EnhancedBrowserView } from "./EnhancedBrowserView";
+import type { ToolCallTask } from "~/core/workflow";
+
 import { ContentDetailModal } from "./ContentDetailModal";
+import { EnhancedBrowserView } from "./EnhancedBrowserView";
+import { EnhancedSearchResults } from "./EnhancedSearchResults";
 import { MediaGrid } from "./MediaCard";
 
 interface ResultSidePanelProps {
@@ -62,7 +65,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
       mediaItems.push({
         src: match[1],
         type: "image",
-        title: match[2] || `图片 ${mediaItems.filter(item => item.type === "image").length + 1}`
+        title: match[2] ?? `图片 ${mediaItems.filter(item => item.type === "image").length + 1}`
       });
     }
 
@@ -71,7 +74,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
       mediaItems.push({
         src: match[1],
         type: "video",
-        title: match[2] || `视频 ${mediaItems.filter(item => item.type === "video").length + 1}`
+        title: match[2] ?? `视频 ${mediaItems.filter(item => item.type === "video").length + 1}`
       });
     }
 
@@ -99,7 +102,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
     const getAllContent = () => {
       let allContent = "";
       if (task.payload.output?.results) {
-        allContent += task.payload.output.results.map((r: any) => r.content || r.raw_content || "").join(" ");
+        allContent += task.payload.output.results.map((r: any) => r.content ?? r.raw_content ?? "").join(" ");
       }
       if (task.payload.output?.content) {
         allContent += task.payload.output.content;
@@ -116,10 +119,10 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
       case "tavily_search":
         if (task.payload.output?.results) {
           const results = task.payload.output.results.map((result: any) => ({
-            title: result.title || "搜索结果",
-            url: result.url || "#",
-            content: result.content || result.raw_content || "",
-            score: result.score || 0,
+            title: result.title ?? "搜索结果",
+            url: result.url ?? "#",
+            content: result.content ?? result.raw_content ?? "",
+            score: result.score ?? 0
           }));
           return (
             <div className="space-y-6">
@@ -144,7 +147,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
           let gifPath = '';
           try {
             const result = typeof task.payload.output === 'string' ? JSON.parse(task.payload.output) : task.payload.output;
-            gifPath = result.generated_gif_path || '';
+            gifPath = result.generated_gif_path ?? '';
           } catch (e) {
             console.warn('解析浏览器工具结果失败:', e);
           }
@@ -162,17 +165,13 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
                       type: 'gif' 
                     });
                   }}>
-                    <img
+                    <Image
                       src={`/api/browser_history/${gifPath.split('/').pop()}`}
                       alt="浏览器操作录制"
+                      width={800}
+                      height={600}
+                      unoptimized
                       className="max-w-full h-auto rounded-lg shadow-lg transition-transform group-hover:scale-105"
-                      onError={(e) => {
-                        console.error('GIF加载失败:', {
-                          gifPath,
-                          filename: gifPath.split('/').pop(),
-                          url: `/api/browser_history/${gifPath.split('/').pop()}`
-                        });
-                      }}
                     />
                     {/* 悬停时显示的放大图标 */}
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg">
@@ -185,7 +184,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
                   </div>
                   <div className="mt-3 text-sm text-gray-600">
                     <div className="font-medium mb-1">执行的操作:</div>
-                    <div>{task.payload.input?.instruction || '浏览器操作'}</div>
+                    <div>{task.payload.input?.instruction ?? '浏览器操作'}</div>
                     {task.payload.input?.url && (
                       <div className="mt-1">
                         <span className="font-medium">目标URL:</span> {task.payload.input.url}
@@ -198,7 +197,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
               {/* 如果有文本内容，也显示 */}
               {task.payload.output?.content && (
                 <EnhancedBrowserView
-                  url={task.payload.input?.url || ""}
+                  url={task.payload.input?.url ?? ""}
                   content={task.payload.output.content}
                   onContentClick={(content, type) => setSelectedContent({ content, type })}
                 />
@@ -220,7 +219,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
           return (
             <div className="space-y-6">
               <EnhancedBrowserView
-                url={task.payload.input?.url || ""}
+                url={task.payload.input?.url ?? ""}
                 content={task.payload.output.content}
                 onContentClick={(content, type) => setSelectedContent({ content, type })}
               />
@@ -248,7 +247,7 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
               <div className="border-t border-gray-700 pt-2">
                 <div className="text-blue-400">&gt;&gt;&gt; {task.payload.input?.code}</div>
                 {task.payload.output?.result && (
-                  <div className="mt-2 text-white whitespace-pre-wrap">
+                  <div className="mt-2 text白 whitespace-pre-wrap">
                     {task.payload.output.result}
                   </div>
                 )}
@@ -259,150 +258,25 @@ export function ResultSidePanel({ task, className }: ResultSidePanelProps) {
                 )}
               </div>
             </div>
-            {mediaItems.length > 0 && (
-              <MediaGrid
-                mediaItems={mediaItems}
-                onMediaClick={(item) => setSelectedContent({ content: item.src, type: item.type })}
-              />
-            )}
-          </div>
-        );
-
-      case "bash_tool":
-        return (
-          <div className="space-y-6">
-            <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-gray-400 ml-2">Terminal</span>
-              </div>
-              <div className="border-t border-gray-700 pt-2">
-                <div className="text-blue-400">$ {task.payload.input?.command}</div>
-                {task.payload.output?.result && (
-                  <div className="mt-2 text-white whitespace-pre-wrap">
-                    {task.payload.output.result}
-                  </div>
-                )}
-                {task.payload.output?.error && (
-                  <div className="mt-2 text-red-400">
-                    Error: {task.payload.output.error}
-                  </div>
-                )}
-              </div>
-            </div>
-            {mediaItems.length > 0 && (
-              <MediaGrid
-                mediaItems={mediaItems}
-                onMediaClick={(item) => setSelectedContent({ content: item.src, type: item.type })}
-              />
-            )}
-          </div>
-        );
-
-      default:
-        return (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">工具调用</h4>
-              <p className="text-sm text-gray-600 mb-2">工具: {task.payload.toolName}</p>
-              {task.payload.input && (
-                <div className="mb-2">
-                  <p className="text-sm font-medium text-gray-700">输入:</p>
-                  <pre className="text-xs bg-white p-2 rounded border overflow-auto">
-                    {JSON.stringify(task.payload.input, null, 2)}
-                  </pre>
-                </div>
-              )}
-              {task.payload.output && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700">输出:</p>
-                  <pre className="text-xs bg-white p-2 rounded border overflow-auto">
-                    {JSON.stringify(task.payload.output, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-            {mediaItems.length > 0 && (
-              <MediaGrid
-                mediaItems={mediaItems}
-                onMediaClick={(item) => setSelectedContent({ content: item.src, type: item.type })}
-              />
-            )}
           </div>
         );
     }
 
-    return (
-      <div className="flex items-center justify-center h-32 text-gray-500">
-        <p>暂无结果数据</p>
-      </div>
-    );
+    return null;
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* 工具信息头部 */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            {getToolIcon(task.payload.toolName)}
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{getToolDisplayName(task.payload.toolName)}</h3>
-            <p className="text-sm text-gray-600">状态: {task.status === "completed" ? "已完成" : "进行中"}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* 工具结果内容 */}
-      <div className="flex-1">
-        {renderTaskContent()}
-      </div>
-
-      {/* 详细内容模态框 */}
+    <div className={cn("h-full", className)}>
+      {renderTaskContent()}
       {selectedContent && (
         <ContentDetailModal
-          isOpen={true}
+          isOpen={!!selectedContent}
           onClose={() => setSelectedContent(null)}
+          title={selectedContent.type === 'gif' ? '浏览器操作录制' : '媒体内容'}
           content={selectedContent.content}
           type={selectedContent.type}
         />
       )}
     </div>
   );
-}
-
-function getToolIcon(toolName: string) {
-  switch (toolName) {
-    case "tavily_search":
-      return "🔍";
-    case "browser":
-    case "crawl_tool":
-      return "🌐";
-    case "python_repl_tool":
-      return "🐍";
-    case "bash_tool":
-      return "💻";
-    default:
-      return "🔧";
-  }
-}
-
-function getToolDisplayName(toolName: string) {
-  switch (toolName) {
-    case "tavily_search":
-      return "网络搜索";
-    case "browser":
-      return "网页浏览";
-    case "crawl_tool":
-      return "网页爬取";
-    case "python_repl_tool":
-      return "Python 执行";
-    case "bash_tool":
-      return "命令行执行";
-    default:
-      return toolName;
-  }
 }

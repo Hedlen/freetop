@@ -3,20 +3,14 @@
  * 在用户登录时提示是否将本地配置迁移到云端
  */
 
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
-import { Button } from '~/components/ui/button';
-import { Badge } from '~/components/ui/badge';
-import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Cloud, HardDrive, ArrowRight, Info } from 'lucide-react';
-import { InputConfig } from '~/core/utils/config';
+import React, { useState } from 'react';
+
+import { Alert, AlertDescription } from '~/components/ui/alert';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import type { InputConfig } from '~/core/utils/config';
 
 interface ConfigMigrationDialogProps {
   open: boolean;
@@ -143,7 +137,7 @@ export function ConfigMigrationDialog({
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                本地和云端配置不同，选择"迁移"将用本地配置覆盖云端配置。
+                本地和云端配置不同，选择&nbsp;&quot;迁移&quot;&nbsp;将用本地配置覆盖云端配置。
               </AlertDescription>
             </Alert>
           )}

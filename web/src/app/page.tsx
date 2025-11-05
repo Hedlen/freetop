@@ -1,8 +1,8 @@
 "use client";
 
+import { ArrowRightIcon, SparklesIcon, BoltIcon, GlobeAltIcon, CodeBracketIcon, RocketLaunchIcon, CpuChipIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRightIcon, SparklesIcon, BoltIcon, GlobeAltIcon, CodeBracketIcon, RocketLaunchIcon, CpuChipIcon } from "@heroicons/react/24/outline";
 
 export default function LandingPage() {
   const [isClient, setIsClient] = useState(false);

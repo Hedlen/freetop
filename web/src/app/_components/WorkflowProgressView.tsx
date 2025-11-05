@@ -1,12 +1,25 @@
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
-import { parse } from "best-effort-json-parser";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { DownOutlined, UpOutlined } from "@ant-design/icons"
+import { parse } from "best-effort-json-parser"
+import { useMemo, useState, useEffect } from "react"
 
-import { Atom } from "~/core/icons";
-import { cn } from "~/core/utils";
-import { WorkflowStep, WorkflowTask } from "~/types/workflow";
-import { Markdown } from "./Markdown";
-import { ToolCallView } from "./ToolCallView";
+import { Atom } from "~/core/icons"
+import { cn } from "~/core/utils"
+import type { WorkflowStep } from "~/types/workflow"
+
+import { Markdown } from "./Markdown"
+import { ToolCallView } from "./ToolCallView"
+
+// 统一移除最外层 markdown 代码块围栏，例如 ```markdown ... ``` 或 ```md ... ``` 或 ``` ... ```
+function unwrapMarkdownFence(text: string): string {
+  if (!text) return "";
+  const trimmed = text.trim();
+  const startFence = /^```[a-zA-Z]*\s*\r?\n/;
+  const endFence = /\r?\n```$/;
+  if (startFence.test(trimmed) && endFence.test(trimmed)) {
+    return trimmed.replace(/^```[a-zA-Z]*\s*\r?\n/, "").replace(/\r?\n```$/, "");
+  }
+  return text;
+}
 
 export function WorkflowProgressView({
   className,
@@ -21,9 +34,40 @@ export function WorkflowProgressView({
   const reportStep = useMemo(() => {
     return workflow.steps.find((step) => step.agentName === "reporter");
   }, [workflow]);
+
+  // 提取 reporter 文本内容，便于统一渲染与调试
+  const reportContent = useMemo(() => {
+    const content = reportStep?.tasks[0]?.type === "thinking"
+      ? reportStep.tasks[0].payload.text ?? ""
+      : "";
+    return typeof content === "string" ? content : String(content ?? "");
+  }, [reportStep]);
+
+  // 移除最外层 markdown 代码围栏，避免整个内容被当作代码块显示
+  const sanitizedReportContent = useMemo(() => unwrapMarkdownFence(reportContent), [reportContent]);
+
+  // 调试日志，确认内容是否为 markdown 以及基本统计
+  useEffect(() => {
+    if (reportStep) {
+      // 基本结构与类型
+      console.log("[Reporter] step:", {
+        id: reportStep.id,
+        agentName: reportStep.agentName,
+        tasksLen: reportStep.tasks.length,
+        firstTaskType: reportStep.tasks[0]?.type,
+      });
+    }
+    console.log("[Reporter] content type:", typeof reportContent, "length:", reportContent?.length ?? 0);
+    console.log("[Reporter] content snippet:", reportContent ? reportContent.slice(0, 200) : "<empty>");
+    if (sanitizedReportContent !== reportContent) {
+      console.log("[Reporter] content was fenced, unwrapped for rendering.");
+      console.log("[Reporter] sanitized snippet:", sanitizedReportContent.slice(0, 200));
+    }
+  }, [reportStep, reportContent, sanitizedReportContent]);
+
   return (
     <div className="flex flex-col gap-3 sm:gap-6">
-      <div className={cn("grid grid-cols-1 lg:grid-cols-[200px_1fr] xl:grid-cols-[220px_1fr] overflow-hidden rounded-lg sm:rounded-2xl border min-h-[300px] sm:min-h-[500px]", className)}>
+      <div className={cn("grid grid-cols-1 lg:grid-cols-[200px_1fr] xl:grid-cols-[220px_1fr] overflow-hidden rounded-lg sm:rounded-2xl border min-h-[300px] sm:minh-[500px]", className)}>
         <aside className="flex flex-col border-r bg-[rgba(0,0,0,0.02)] sticky top-0 h-fit max-h-[200px] sm:max-h-[300px] lg:max-h-[500px]">
           <div className="flex-shrink-0 px-2 sm:px-4 py-2 sm:py-4 text-sm sm:text-base font-medium border-b bg-white/50">Flow</div>
           <ol className="flex flex-col gap-1 sm:gap-3 px-2 sm:px-4 py-2 sm:py-4 overflow-y-auto">
@@ -69,16 +113,14 @@ export function WorkflowProgressView({
           </div>
           <div className="bg-white rounded-lg p-3 sm:p-6 shadow-sm">
             <Markdown className="prose prose-sm max-w-none">
-              {reportStep.tasks[0]?.type === "thinking"
-                ? reportStep.tasks[0].payload.text
-                : ""}
+              {sanitizedReportContent}
             </Markdown>
           </div>
         </div>
       )}
       {reportStep && (
         <div className="flex justify-start">
-          <ReportActions reportContent={reportStep.tasks[0]?.type === "thinking" ? reportStep.tasks[0].payload.text : ""} />
+          <ReportActions reportContent={sanitizedReportContent} />
         </div>
       )}
     </div>
@@ -114,7 +156,7 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 w-full">
           <button
             className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500 hover:bg-blue-600 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-wrap"
-            onClick={() => setShowReason(!showReason)}
+             onClick={() => setShowReason(!showReason)}
           >
             <Atom className="h-3 w-3 flex-shrink-0" />
             <span>Deep Thought</span>
@@ -156,7 +198,7 @@ function ReportActions({ reportContent }: { reportContent: string }) {
   const handleReportRetry = async () => {
     console.log('Report retry button clicked');
     try {
-      const { useStore, sendMessage, setResponding } = await import('~/core/store');
+      const { useStore, sendMessage } = await import('~/core/store');
       const messages = useStore.getState().messages;
       
       console.log('Current messages:', messages.length);
@@ -197,20 +239,15 @@ function ReportActions({ reportContent }: { reportContent: string }) {
         const { getInputConfigSync } = await import('~/core/utils/config');
         const config = getInputConfigSync();
         
-        await sendMessage(userMessage, config);
-          
-          console.log('Retry completed successfully');
-        } else {
-          console.log('No valid user message found for retry');
+        const inputMessages = [{ content: userMessage.content ?? '', role: 'user' }];
+        await sendMessage(inputMessages, {
+          deepThinkingMode: config.deepThinkingMode ?? false,
+          searchBeforePlanning: config.searchBeforePlanning ?? false,
+        });
         }
-      } else {
-        console.log('No workflow message found for retry');
       }
     } catch (error) {
-      console.error('Error in handleReportRetry:', error);
-      // 确保在出错时重置responding状态
-      const { setResponding } = await import('~/core/store');
-      setResponding(false);
+      console.error('Report retry failed:', error);
     }
   };
 
@@ -224,49 +261,25 @@ function ReportActions({ reportContent }: { reportContent: string }) {
   };
 
   return (
-    <div className="flex gap-1 mt-2">
+    <div className="flex gap-2 sm:gap-3">
       <button
+        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-gray-100 hover:bg-gray-200 px-2 sm:px-3 py-1.5 text-xs text-gray-700 transition-colors"
         onClick={handleCopy}
-        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700"
-        title="复制整个回复"
       >
-        {copySuccess ? (
-          <>
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            <span>已复制</span>
-          </>
-        ) : (
-          <>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <span>复制</span>
-          </>
-        )}
+        <span>复制报告</span>
+        {copySuccess && <span className="text-green-600 ml-1">✓ 已复制</span>}
       </button>
-      
       <button
+        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-blue-100 hover:bg-blue-200 px-2 sm:px-3 py-1.5 text-xs text-blue-700 transition-colors"
         onClick={handleReportRetry}
-        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-xs font-medium bg-green-100 hover:bg-green-200 text-green-700"
-        title="重新生成整个回复"
       >
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span>重试</span>
+        <span>重新生成</span>
       </button>
-      
       <button
+        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-red-100 hover:bg-red-200 px-2 sm:px-3 py-1.5 text-xs text-red-700 transition-colors"
         onClick={handleDelete}
-        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700"
-        title="删除整个回复"
       >
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        <span>删除</span>
+        <span>删除报告</span>
       </button>
     </div>
   );

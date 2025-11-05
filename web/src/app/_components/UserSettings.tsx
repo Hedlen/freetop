@@ -1,19 +1,15 @@
-/**
- * 用户设置页面组件
- * 提供配置管理、账户信息和数据同步功能
- */
+import { AlertCircle, Cloud, CloudOff, RefreshCw, Settings, User } from 'lucide-react'
+import React from 'react'
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { Switch } from '~/components/ui/switch';
-import { Label } from '~/components/ui/label';
-import { Button } from '~/components/ui/button';
-import { Badge } from '~/components/ui/badge';
-import { Separator } from '~/components/ui/separator';
-import { useInputConfig } from '~/core/hooks/useInputConfig';
-import { useAuth } from '~/core/hooks/useAuth';
-import { AlertCircle, Cloud, CloudOff, RefreshCw, Settings, User } from 'lucide-react';
-import { Alert, AlertDescription } from '~/components/ui/alert';
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
+import { Label } from '~/components/ui/label'
+import { Separator } from '~/components/ui/separator'
+import { Switch } from '~/components/ui/switch'
+import { useAuth } from '~/core/hooks/useAuth'
+import { useInputConfig } from '~/core/hooks/useInputConfig'
 
 export function UserSettings() {
   const { 
@@ -52,7 +48,7 @@ export function UserSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">已登录用户</p>
-                  <p className="text-sm text-gray-500">{user?.email || '用户'}</p>
+                  <p className="text-sm text-gray-500">{user?.email ?? '用户'}</p>
                 </div>
                 <Badge variant="outline" className="text-green-600 border-green-600">
                   <Cloud className="h-3 w-3 mr-1" />

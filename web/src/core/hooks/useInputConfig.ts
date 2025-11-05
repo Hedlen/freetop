@@ -4,13 +4,15 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  InputConfig, 
-  getInputConfig, 
-  saveInputConfig, 
+
+import {
+  type InputConfig,
+  getInputConfig,
+  saveInputConfig,
   getInputConfigSync,
-  saveInputConfigSync 
+  saveInputConfigSync
 } from '../utils/config';
+
 import { useIsLoggedIn } from './useAuth';
 
 export function useInputConfig() {
@@ -40,15 +42,15 @@ export function useInputConfig() {
 
   // 初始化加载配置
   useEffect(() => {
-    loadConfig();
-  }, []);
+    void loadConfig();
+  }, [loadConfig]);
 
-  // 登录状态变化时重新加载配置
+  // 登录状态/加载状态变化时重新加载配置
   useEffect(() => {
     if (!loading) {
-      loadConfig();
+      void loadConfig();
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, loading, loadConfig]);
 
   // 保存配置
   const updateConfig = useCallback(async (newConfig: Partial<InputConfig>) => {
@@ -74,23 +76,21 @@ export function useInputConfig() {
 
   // 切换深度思考模式
   const toggleDeepThinking = useCallback(() => {
-    updateConfig({ deepThinkingMode: !config.deepThinkingMode });
+    void updateConfig({ deepThinkingMode: !config.deepThinkingMode });
   }, [config.deepThinkingMode, updateConfig]);
 
   // 切换搜索规划模式
   const toggleSearchPlanning = useCallback(() => {
-    updateConfig({ searchBeforePlanning: !config.searchBeforePlanning });
+    void updateConfig({ searchBeforePlanning: !config.searchBeforePlanning });
   }, [config.searchBeforePlanning, updateConfig]);
 
   // 重置配置
   const resetConfig = useCallback(() => {
-    updateConfig({
+    void updateConfig({
       deepThinkingMode: false,
       searchBeforePlanning: false
     });
   }, [updateConfig]);
-
-
 
   return {
     config,
@@ -130,7 +130,7 @@ export function useInputConfigValue(): InputConfig {
       }
     };
 
-    loadConfig();
+    void loadConfig();
   }, [hasLoaded]);
 
   return config;

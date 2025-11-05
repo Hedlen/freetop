@@ -28,7 +28,7 @@ const defaultSettings: Settings = {
 };
 
 export const useSettingsStore = create<SettingsStore>()(persist(
-  (set, get) => ({
+  (set, _get) => ({
     settings: defaultSettings,
     
     updateSettings: (updates: Partial<Settings>) => {

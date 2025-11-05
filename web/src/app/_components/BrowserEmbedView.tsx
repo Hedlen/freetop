@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+
 import { cn } from "~/core/utils";
+
 import { ContentDetailModal } from "./ContentDetailModal";
 
+
+/* eslint-disable @next/next/no-img-element */
 interface BrowserSession {
   id: string;
   url: string;
@@ -38,9 +42,9 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
         // 创建新的浏览器会话
         const newSession: BrowserSession = {
           id: toolCallId,
-          url: toolInput.target_url || extractUrlFromInstruction(toolInput.instruction) || 'about:blank',
+          url: toolInput.target_url ?? extractUrlFromInstruction(toolInput.instruction) ?? 'about:blank',
           title: `浏览器会话 ${sessions.length + 1}`,
-          instruction: toolInput.instruction || '浏览器操作',
+          instruction: toolInput.instruction ?? '浏览器操作',
           timestamp: Date.now(),
         };
         
@@ -67,7 +71,7 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
           try {
             const result = typeof toolResult === 'string' ? JSON.parse(toolResult) : toolResult;
             console.log('📋 解析后的结果对象:', result);
-            gifPath = result.generated_gif_path || '';
+            gifPath = result.generated_gif_path ?? '';
             console.log('🎬 解析到GIF路径:', gifPath);
             if (gifPath) {
               const filename = gifPath.split('/').pop();
@@ -76,7 +80,7 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
               console.log('🌐 API URL:', apiUrl);
               
               // 测试API端点是否可访问
-              fetch(apiUrl, { method: 'HEAD' })
+              void fetch(apiUrl, { method: 'HEAD' })
                 .then(response => {
                   console.log('✅ GIF文件可访问:', { status: response.status, url: apiUrl });
                 })
@@ -94,7 +98,7 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
           const updatedSession = {
             ...session,
             gifPath,
-            title: extractTitleFromResult(toolResult) || session.title,
+            title: extractTitleFromResult(toolResult) ?? session.title,
           };
           console.log('✅ 会话更新完成:', { id: session.id, hasGif: !!gifPath, gifPath });
           return updatedSession;
@@ -143,23 +147,23 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
   const extractTitleFromResult = (result: any): string | null => {
     try {
       const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-      const content = parsed.result_content || '';
+      const content = parsed.result_content ?? '';
       
       // 尝试从内容中提取标题
-      const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        return titleMatch[1].trim();
+      const titleExec = /<title[^>]*>([^<]+)<\/title>/i.exec(content);
+      if (titleExec) {
+        return titleExec[1].trim();
       }
       
       // 使用内容的前50个字符作为标题
       const firstLine = content.split('\n')[0];
       return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
-    } catch (e) {
+    } catch {
       return null;
     }
   };
 
-  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[sessions.length - 1];
+  const activeSession = sessions.find(s => s.id === activeSessionId) ?? sessions[sessions.length - 1];
   
   // 当前活跃会话状态
   console.log('🔍 当前会话状态:', {
@@ -280,6 +284,8 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
                 <div className="h-full flex flex-col">
                   <div className="flex-1 flex items-center justify-center bg-gray-50">
                     <div className="max-w-full max-h-full relative group cursor-pointer" onClick={() => handleGifClick(activeSession)}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {/* 使用 <img> 显示动态GIF以保留原始帧与手动重载 */}
                       <img
                         src={`/api/browser_history/${activeSession.gifPath.split('/').pop()}`}
                         alt="浏览器操作录制"
@@ -360,7 +366,7 @@ export function BrowserEmbedView({ className }: BrowserEmbedViewProps) {
            title={selectedGifData.title}
            content={`/api/browser_history/${selectedGifData.gifPath.split('/').pop()}`}
            type="gif"
-           url={extractUrlFromInstruction(selectedGifData.instruction) || undefined}
+           url={extractUrlFromInstruction(selectedGifData.instruction) ?? undefined}
          />
       )}
     </div>

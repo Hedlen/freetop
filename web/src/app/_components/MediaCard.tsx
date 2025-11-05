@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+
 import { cn } from "~/core/utils";
 
 interface MediaCardProps {
@@ -56,12 +58,15 @@ export function MediaCard({ src, type, title, description, className, onClick }:
         )}
         
         {type === "image" ? (
-          <img
+          <Image
             src={src}
-            alt={title || "图片"}
+            alt={title ?? "图片"}
+            width={768}
+            height={288}
+            unoptimized
             className="w-full h-48 object-cover"
-            onLoad={handleLoad}
-            onError={handleError}
+            onLoad={handleLoad as any}
+            onError={handleError as any}
           />
         ) : (
           <video
@@ -81,7 +86,7 @@ export function MediaCard({ src, type, title, description, className, onClick }:
       </div>
       
       {/* 媒体信息 */}
-      {(title || description) && (
+      {(title ?? description) && (
         <div className="p-3">
           {title && (
             <h4 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">

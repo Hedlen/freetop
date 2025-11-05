@@ -1,13 +1,19 @@
 "use client";
 
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
 import { cn } from "~/core/utils";
-import { Markdown } from "./Markdown";
-import { HotelInfoDisplay } from "./HotelInfoDisplay";
-import { ProductInfoDisplay } from "./ProductInfoDisplay";
+
 import { useGifCache } from "../_hooks/useGifCache";
 import { trackGifView, trackGifError, trackModalOpen, trackModalClose, trackRetryAttempt } from "../_utils/analytics";
+
+import { HotelInfoDisplay } from "./HotelInfoDisplay";
+import { Markdown } from "./Markdown";
+import { ProductInfoDisplay } from "./ProductInfoDisplay";
+
+/* eslint-disable @next/next/no-img-element */
+// 保留 <img> 用于动态图(GIF)与手动重载控制；next/image 不适用此场景
 
 // 配置常量
 const MODAL_CONFIG = {
@@ -52,26 +58,26 @@ export function ContentDetailModal({
   const loadStartTimeRef = useRef<number>(0);
   
   // GIF缓存Hook
-  const { getCachedUrl, preloadGif, getCacheStats } = useGifCache();
+  const { getCachedUrl, preloadGif } = useGifCache();
   
   // 获取实际显示的URL（优先使用缓存）
-  const getDisplayUrl = (originalUrl: string) => {
+  const getDisplayUrl = useCallback((originalUrl: string) => {
     if (type === 'gif') {
       const cachedUrl = getCachedUrl(originalUrl);
-      return cachedUrl || originalUrl;
+      return cachedUrl ?? originalUrl;
     }
     return originalUrl;
-  };
+  }, [type, getCachedUrl]);
 
   // 重试机制（增强版）
-  const handleMediaError = (mediaType: 'image' | 'video', src: string, error?: Event) => {
+  const handleMediaError = useCallback((mediaType: 'image' | 'video', src: string, error?: Event) => {
     const currentError = mediaErrors.get(src);
     const retryCount = currentError ? currentError.retryCount + 1 : 1;
     
     // 跟踪错误
     trackGifError({
       url: src,
-      error: error?.type || 'load_error',
+      error: error?.type ?? 'load_error',
       retryCount,
       userAgent: navigator.userAgent,
     });
@@ -81,30 +87,31 @@ export function ContentDetailModal({
       
       retryTimeoutRef.current = setTimeout(() => {
         // 触发重新加载
-        const element = document.querySelector(`[data-src="${src}"]`) as HTMLImageElement | HTMLVideoElement;
+        const element = document.querySelector<HTMLImageElement | HTMLVideoElement>(`[data-src="${src}"]`);
         if (element) {
-          element.src = `${src}?retry=${retryCount}&t=${Date.now()}`;
-          
-          // 跟踪重试尝试
-          trackRetryAttempt({
-            url: src,
-            attempt: retryCount,
-            success: false, // 将在成功加载时更新
-          });
+          element.src = src;
         }
       }, delay);
+      
+      // 记录重试尝试
+      trackRetryAttempt({ url: src, retryCount });
+    } else {
+      // 记录最终失败
+      setMediaErrors(prev => {
+        const newMap = new Map(prev);
+        newMap.set(src, {
+          type: mediaType,
+          message: '加载失败，请稍后重试',
+          retryCount,
+          timestamp: Date.now(),
+        });
+        return newMap;
+      });
     }
-    
-    setMediaErrors(prev => new Map(prev.set(src, {
-      type: mediaType,
-      message: error ? `加载失败 (尝试 ${retryCount}/${MODAL_CONFIG.MAX_RETRY_COUNT})` : '加载失败',
-      retryCount,
-      timestamp: Date.now()
-    })));
-  };
+  }, [mediaErrors]);
 
   // 预加载图片（支持GIF缓存）
-  const preloadImage = async (src: string) => {
+  const preloadImage = useCallback(async (src: string) => {
     if (!MODAL_CONFIG.PRELOAD_ENABLED || preloadedImages.has(src)) return;
     
     try {
@@ -127,7 +134,7 @@ export function ContentDetailModal({
       console.warn('Preload failed:', src, error);
       handleMediaError('image', src);
     }
-  };
+  }, [preloadedImages, type, preloadGif, handleMediaError]);
 
   // 清理错误状态
   const clearMediaError = (src: string) => {
@@ -144,25 +151,25 @@ export function ContentDetailModal({
       modalOpenTimeRef.current = Date.now();
       
       // 跟踪模态框打开
-      trackModalOpen({
-        type: type || 'general',
+      void trackModalOpen({
+        type: type ?? 'general',
         url: content,
       });
       
       // 预加载媒体内容
       if ((type === 'image' || type === 'gif') && content) {
-        preloadImage(content);
+        void preloadImage(content);
       }
     } else if (modalOpenTimeRef.current > 0) {
       // 跟踪模态框关闭
       const duration = Date.now() - modalOpenTimeRef.current;
-      trackModalClose({
-        type: type || 'general',
+      void trackModalClose({
+        type: type ?? 'general',
         duration,
       });
       modalOpenTimeRef.current = 0;
     }
-  }, [isOpen, type, content]);
+  }, [isOpen, type, content, preloadImage]);
 
   // 添加ESC键关闭功能和可访问性改进
   useEffect(() => {
@@ -256,7 +263,7 @@ export function ContentDetailModal({
               <button
                 onClick={() => {
                   clearMediaError(content);
-                  preloadImage(content);
+                  void preloadImage(content);
                 }}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                 aria-label={`重新加载${type === "gif" ? "GIF动画" : "图片"}`}
@@ -275,9 +282,11 @@ export function ContentDetailModal({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
           )}
-          <img
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* 使用 <img> 以支持动态图(GIF)与手动重载控制；next/image不适用此场景 */}
+            <img
             src={getDisplayUrl(content)}
-            alt={title || (type === "gif" ? "GIF动画" : "图片")}
+            alt={title ?? (type === "gif" ? "GIF动画" : "图片")}
             className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
             data-src={content}
             onLoad={() => {
@@ -289,13 +298,13 @@ export function ContentDetailModal({
                 ? Date.now() - loadStartTimeRef.current 
                 : undefined;
               
-              const fromCache = getCachedUrl(content) !== null;
+              const fromCache = !!getCachedUrl(content);
               
               trackGifView({
                 url: content,
                 loadTime,
                 fromCache,
-                retryCount: mediaErrors.get(content)?.retryCount || 0,
+                retryCount: mediaErrors.get(content)?.retryCount ?? 0,
               });
               
               // 如果是重试成功，更新重试跟踪
@@ -414,7 +423,7 @@ export function ContentDetailModal({
               id="modal-title"
               className="text-xl font-semibold text-gray-900"
             >
-              {title || (type === "image" ? "图片详情" : type === "gif" ? "GIF动画详情" : type === "video" ? "视频详情" : "内容详情")}
+              {title ?? (type === "image" ? "图片详情" : type === "gif" ? "GIF动画详情" : type === "video" ? "视频详情" : "内容详情")}
             </h2>
             {url && (
               <a

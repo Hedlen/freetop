@@ -1,42 +1,43 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Message } from '@/core/types/message';
-import { Markdown } from '@/core/components/Markdown';
-import { WorkflowProgressView } from './WorkflowProgressView';
-import { LoadingAnimation } from '@/core/components/LoadingAnimation';
-import { Copy, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { generateAIResponse } from '@/core/api/chat';
+import { LoadingAnimation } from '@/core/components/LoadingAnimation';
+import { Markdown } from '@/core/components/Markdown';
 import { useMessageStore } from '@/core/store/messageStore';
 import { useSessionStore } from '@/core/store/sessionStore';
+import type { Message } from '@/core/types/message';
 import { useSettingsStore } from '~/core/store/settingsStore';
-import { generateAIResponse } from '@/core/api/chat';
-import { MediaCard } from './MediaCard';
-import { ToolCallView } from './ToolCallView';
 import { cn } from '~/core/utils';
 
+import { MediaCard } from './MediaCard';
+import { ToolCallView } from './ToolCallView';
+import { WorkflowProgressView } from './WorkflowProgressView';
+
 // 防抖工具函数
-const debounce = (func: Function, wait: number) => {
-  let timeout: NodeJS.Timeout;
-  return function executedFunction(...args: any[]) {
+function debounce(func: (...args: any[]) => void, wait: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  return (...args: any[]) => {
     const later = () => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       func(...args);
     };
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
-};
+}
 
 // 节流工具函数
-const throttle = (func: Function, limit: number) => {
-  let inThrottle: boolean;
-  return function executedFunction(...args: any[]) {
+function throttle(func: (...args: any[]) => void, limit: number) {
+  let inThrottle = false;
+  return (...args: any[]) => {
     if (!inThrottle) {
-      func.apply(this, args);
+      func(...args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      setTimeout(() => { inThrottle = false; }, limit);
     }
   };
-};
+}
 
 interface MessageHistoryViewProps {
   messages: Message[];
@@ -52,7 +53,6 @@ export function MessageHistoryView({ messages, responding, abortController, clas
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [isResizing, setIsResizing] = useState(false);
-  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
 
   // 防抖处理滚动事件
@@ -71,65 +71,56 @@ export function MessageHistoryView({ messages, responding, abortController, clas
   }, []);
   
   // resize事件防抖处理
-  const handleResize = useCallback(
-    debounce(() => {
-      setIsResizing(false);
-    }, 300),
-    []
-  );
+  const debouncedResize = useMemo(() => debounce(() => {
+    setIsResizing(false);
+  }, 300), [setIsResizing]);
   
   useEffect(() => {
     const handleResizeStart = () => {
       setIsResizing(true);
-      handleResize();
+      debouncedResize();
     };
     
     window.addEventListener('resize', handleResizeStart);
     return () => {
       window.removeEventListener('resize', handleResizeStart);
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
     };
-  }, [handleResize]);
+  }, [debouncedResize]);
   
   // 优化的防抖滚动处理
-  const handleScroll = useCallback(
-    throttle(() => {
-      if (isResizing || !isWindowVisible) return; // resize或窗口不可见时跳过
+  const throttledScroll = useMemo(() => throttle(() => {
+    if (isResizing || !isWindowVisible) return; // resize或窗口不可见时跳过
+    
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      const container = containerRef.current;
+      if (!container) return;
       
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
       
-      debounceTimeoutRef.current = setTimeout(() => {
-        const container = containerRef.current;
-        if (!container) return;
+      if (!isAtBottom) {
+        setIsUserScrolling(true);
         
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-        
-        if (!isAtBottom) {
-          setIsUserScrolling(true);
-          
-          if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
-          }
-          
-          scrollTimeoutRef.current = setTimeout(() => {
-            setIsUserScrolling(false);
-          }, 5000);
-        } else {
-          setIsUserScrolling(false);
-          if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
-            scrollTimeoutRef.current = null;
-          }
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
         }
-      }, 100);
-    }, 16), // 约60fps的节流
-    [isResizing, isWindowVisible]
-  );
+        
+        scrollTimeoutRef.current = setTimeout(() => {
+          setIsUserScrolling(false);
+        }, 5000);
+      } else {
+        setIsUserScrolling(false);
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+          scrollTimeoutRef.current = null;
+        }
+      }
+    }, 100);
+  }, 16), [isResizing, isWindowVisible]);
 
   // 处理滚动条区域的鼠标滚轮事件
   const handleWheelEvent = useCallback((e: WheelEvent) => {
@@ -169,7 +160,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
     intersectionObserverRef.current = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry && entry.isIntersecting) {
+        if (entry?.isIntersecting) {
           setIsUserScrolling(false);
           if (scrollTimeoutRef.current) {
             clearTimeout(scrollTimeoutRef.current);
@@ -187,15 +178,13 @@ export function MessageHistoryView({ messages, responding, abortController, clas
     
     // 只在窗口可见且非resize状态时添加事件监听
     if (isWindowVisible && !isResizing) {
-      container.addEventListener('scroll', handleScroll, { passive: true });
+      container.addEventListener('scroll', throttledScroll, { passive: true });
       container.addEventListener('wheel', handleWheelEvent, { passive: false });
     }
     
     return () => {
-      if (intersectionObserverRef.current) {
-        intersectionObserverRef.current.disconnect();
-      }
-      container.removeEventListener('scroll', handleScroll);
+      intersectionObserverRef.current?.disconnect();
+      container.removeEventListener('scroll', throttledScroll);
       container.removeEventListener('wheel', handleWheelEvent);
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
@@ -204,7 +193,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [handleScroll, handleWheelEvent, isWindowVisible, isResizing]);
+  }, [throttledScroll, handleWheelEvent, isWindowVisible, isResizing]);
 
   // 优化的自动滚动逻辑
   useEffect(() => {
@@ -240,7 +229,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
       ref={containerRef}
       className={`
         w-full h-full
-        ${className || ''}
+        ${className ?? ''}
       `}
       style={{
         WebkitOverflowScrolling: 'touch',
@@ -276,19 +265,17 @@ export function MessageHistoryView({ messages, responding, abortController, clas
   );
 }
 
-const MessageView = React.memo(({ message, abortController, messages, isWindowVisible, isResizing }: { 
+const MessageView = React.memo(({ message, abortController, messages, isWindowVisible: _isWindowVisible, isResizing: _isResizing }: { 
   message: Message; 
   abortController?: AbortController; 
   messages: Message[];
   isWindowVisible?: boolean;
   isResizing?: boolean;
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const { deleteMessage, updateMessage } = useMessageStore();
+  const { deleteMessage } = useMessageStore();
   const { currentSessionId } = useSessionStore();
   const { settings } = useSettingsStore();
-  
   const handleCopy = useCallback(async () => {
     if (message.content && typeof message.content === 'string') {
       try {
@@ -389,8 +376,6 @@ const MessageView = React.memo(({ message, abortController, messages, isWindowVi
     return (
       <div 
         className={cn("flex mb-8 group", message.role === "user" ? "justify-end" : "justify-start")}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         {message.role === "assistant" && (
           <div className="flex-shrink-0 mr-3 mt-1">

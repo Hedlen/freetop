@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { ArrowLeftIcon, CameraIcon, EnvelopeIcon, UserIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftIcon, UserIcon, EnvelopeIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
 
 interface User {
   id: number;
@@ -64,9 +65,9 @@ export default function ProfilePage() {
       const parsedUser = JSON.parse(userInfo);
       setUser(parsedUser);
       setFormData({
-        username: parsedUser.username || '',
-        email: parsedUser.email || '',
-        avatar_url: parsedUser.avatar_url || ''
+        username: parsedUser.username ?? '',
+        email: parsedUser.email ?? '',
+        avatar_url: parsedUser.avatar_url ?? ''
       });
     } catch (error) {
       console.error('解析用户信息失败:', error);
@@ -101,7 +102,7 @@ export default function ProfilePage() {
           setIsEditing(false);
           setMessage('个人信息更新成功！');
         } else {
-          setMessage(result.message || '更新失败，请重试');
+          setMessage(result.message ?? '更新失败，请重试');
         }
       } else if (response.status === 401) {
         const errorData = await response.json();
@@ -110,7 +111,7 @@ export default function ProfilePage() {
           const refreshed = await refreshToken();
           if (refreshed) {
             // 刷新成功，重新提交
-            return handleSubmit(e);
+            return handleSave();
           } else {
             setMessage('登录已过期，请重新登录');
             localStorage.removeItem('auth_token');
@@ -123,7 +124,7 @@ export default function ProfilePage() {
         }
       } else {
         const result = await response.json();
-        setMessage(result.message || '更新失败，请重试');
+        setMessage(result.message ?? '更新失败，请重试');
       }
     } catch (error) {
       console.error('更新个人信息失败:', error);
@@ -136,9 +137,9 @@ export default function ProfilePage() {
   const handleCancel = () => {
     if (user) {
       setFormData({
-        username: user.username || '',
-        email: user.email || '',
-        avatar_url: user.avatar_url || ''
+        username: user.username ?? '',
+        email: user.email ?? '',
+        avatar_url: user.avatar_url ?? ''
       });
     }
     setIsEditing(false);
@@ -190,9 +191,12 @@ export default function ProfilePage() {
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-medium overflow-hidden">
                   {user.avatar_url ? (
-                    <img 
+                    <Image 
                       src={user.avatar_url} 
-                      alt={user.username}
+                      alt={user.username ?? 'avatar'}
+                      width={96}
+                      height={96}
+                      unoptimized
                       className="w-full h-full object-cover"
                     />
                   ) : (

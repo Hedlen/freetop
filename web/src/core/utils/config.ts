@@ -30,8 +30,8 @@ export function getLocalConfig(): InputConfig {
 
     const parsedConfig = JSON.parse(config);
     return {
-      deepThinkingMode: parsedConfig.deepThinkingMode || false,
-      searchBeforePlanning: parsedConfig.searchBeforePlanning || false,
+      deepThinkingMode: parsedConfig.deepThinkingMode ?? false,
+      searchBeforePlanning: parsedConfig.searchBeforePlanning ?? false,
     };
   } catch (error) {
     console.error('Failed to parse local input config:', error);
@@ -75,7 +75,7 @@ export async function getCloudConfig(): Promise<InputConfig | null> {
 
     if (response.ok) {
       const data = await response.json();
-      const config = data.settings?.inputConfig || null;
+      const config = data.settings?.inputConfig ?? null;
       // 更新缓存
       configCache = {
         config,
@@ -100,7 +100,7 @@ export async function getCloudConfig(): Promise<InputConfig | null> {
             });
             if (retryResponse.ok) {
               const retryData = await retryResponse.json();
-              const retryConfig = retryData.settings?.inputConfig || null;
+              const retryConfig = retryData.settings?.inputConfig ?? null;
               // 更新缓存
               configCache = {
                 config: retryConfig,

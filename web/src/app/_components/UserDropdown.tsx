@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
-import { cn } from '~/core/utils';
+import Image from 'next/image'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+
+import { cn } from '~/core/utils'
 
 interface User {
   id: number;
@@ -18,7 +19,6 @@ interface UserDropdownProps {
 }
 
 export function UserDropdown({ user, onLogout }: UserDropdownProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -28,8 +28,8 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
   const calculatePosition = useCallback(() => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollX = window.pageXOffset ?? document.documentElement.scrollLeft
+      const scrollY = window.pageYOffset ?? document.documentElement.scrollTop
       
       setDropdownPosition({
         top: rect.bottom + scrollY + 8, // 8px gap
@@ -41,17 +41,12 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
   // 点击外部关闭下拉菜单
   const handleClickOutside = useCallback((event: MouseEvent) => {
     const target = event.target as Element;
-    
-    // 检查是否点击在按钮或下拉菜单内
-    if (buttonRef.current && buttonRef.current.contains(target)) {
-      return; // 点击按钮，不关闭
+    if (buttonRef.current?.contains(target)) {
+      return;
     }
-    
-    if (dropdownRef.current && dropdownRef.current.contains(target)) {
-      return; // 点击下拉菜单内，不关闭
+    if (dropdownRef.current?.contains(target)) {
+      return;
     }
-    
-    // 点击外部，关闭下拉菜单
     setIsOpen(false);
   }, []);
 
@@ -95,9 +90,11 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
       >
         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-sm">
           {user.avatar_url ? (
-            <img 
-              src={user.avatar_url} 
+            <Image 
+              src={user.avatar_url}
               alt={user.username}
+              width={32}
+              height={32}
               className="w-full h-full rounded-full object-cover"
             />
           ) : (
@@ -140,9 +137,11 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
                 {user.avatar_url ? (
-                  <img 
-                    src={user.avatar_url} 
+                  <Image 
+                    src={user.avatar_url}
                     alt={user.username}
+                    width={40}
+                    height={40}
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (

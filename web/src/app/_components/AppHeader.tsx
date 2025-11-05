@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserDropdown } from './UserDropdown';
+import { useState, useEffect } from 'react';
+
 import { LoginModal } from './LoginModal';
+import { UserDropdown } from './UserDropdown';
 
 interface User {
   id: number;
@@ -61,7 +62,7 @@ export function AppHeader() {
      };
    }, []);
 
-  const handleLogin = (username: string, password: string) => {
+  const handleLogin = (_username: string, _password: string) => {
     // 登录成功后，用户信息已在LoginModal中保存到localStorage
     // 这里重新读取用户信息
     const userInfo = localStorage.getItem('user_info');

@@ -5,8 +5,7 @@ import { chatStream as mockChatStream } from "../api/mock";
 import {
   type WorkflowMessage,
   type Message,
-  type TextMessage,
-  type MultiModalMessage,
+  type TextMessage
 } from "../messaging";
 import { clone } from "../utils";
 import { WorkflowEngine } from "../workflow";

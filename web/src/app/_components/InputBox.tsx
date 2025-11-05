@@ -1,10 +1,8 @@
-// 移除Ant Design图标导入
-import { type KeyboardEvent, useCallback, useEffect, useState, useRef } from "react";
+import { type KeyboardEvent, useCallback, useState } from "react";
 
+import { useInputConfig } from "~/core/hooks/useInputConfig";
 import { Atom } from "~/core/icons";
 import { cn } from "~/core/utils";
-import { useInputConfig } from "~/core/hooks/useInputConfig";
-
 
 export function InputBox({
   className,
@@ -25,20 +23,15 @@ export function InputBox({
   const [message, setMessage] = useState("");
 
   const [imeStatus, setImeStatus] = useState<"active" | "inactive">("inactive");
-  const [isClient, setIsClient] = useState(false);
+  // 移除未使用的 isClient 状态
   const { 
     config, 
     loading: configLoading, 
-    syncing, 
     toggleDeepThinking, 
     toggleSearchPlanning 
   } = useInputConfig();
 
   const { deepThinkingMode, searchBeforePlanning } = config;
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
 
   const handleSendMessage = useCallback(() => {

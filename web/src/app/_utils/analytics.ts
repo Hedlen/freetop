@@ -47,7 +47,7 @@ class Analytics {
       if (event.target instanceof HTMLImageElement || event.target instanceof HTMLVideoElement) {
         this.trackGifError({
           url: event.target.src,
-          error: event.message || 'Media load error',
+          error: event.message ?? 'Media load error',
           retryCount: 0,
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
         });
@@ -82,7 +82,7 @@ class Analytics {
       url: data.url,
       loadTime: data.loadTime,
       fromCache: data.fromCache,
-      retryCount: data.retryCount || 0,
+      retryCount: data.retryCount ?? 0,
       viewport: typeof window !== 'undefined' ? {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -135,7 +135,7 @@ class Analytics {
   private getConnectionInfo() {
     if (typeof navigator === 'undefined') return null;
     
-    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    const connection = (navigator as any).connection ?? (navigator as any).mozConnection ?? (navigator as any).webkitConnection;
     
     if (connection) {
       return {
@@ -205,8 +205,8 @@ class Analytics {
       const url = event.data.url;
       const error = event.data.error;
       
-      errorsByUrl.set(url, (errorsByUrl.get(url) || 0) + 1);
-      errorsByType.set(error, (errorsByType.get(error) || 0) + 1);
+      errorsByUrl.set(url, (errorsByUrl.get(url) ?? 0) + 1);
+      errorsByType.set(error, (errorsByType.get(error) ?? 0) + 1);
     });
     
     return {

@@ -1,25 +1,23 @@
 "use client";
 
 import { nanoid } from "nanoid";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { sendMessage, useStore, clearMessages, abortCurrentTask } from "~/core/store";
 import { abortAllUserTasks } from "~/core/api";
-import { cn } from "~/core/utils";
-
+import { sendMessage, useStore, clearMessages, abortCurrentTask } from "~/core/store";
+// Removed unused import 'cn'
+// import { cn } from "~/core/utils";
+import { type ToolCallTask } from "~/core/workflow";
 
 import { AppHeader } from "../_components/AppHeader";
 import { InputBox } from "../_components/InputBox";
-import { MessageHistoryView } from "../_components/MessageHistoryView";
-import { SlidingLayout } from "../_components/SlidingLayout";
-import { ResultSidePanel } from "../_components/ResultSidePanel";
-import { sidePanelEventManager } from "../_components/ToolCallView";
-
-import { SessionHistoryModal } from "../_components/SessionHistoryModal";
 import { LoginModal } from "../_components/LoginModal";
+import { MessageHistoryView } from "../_components/MessageHistoryView";
 import { MobileSidebar } from "../_components/MobileSidebar";
-// LoginModal现在在AppHeader中管理
-import { type ToolCallTask } from "~/core/workflow";
+import { ResultSidePanel } from "../_components/ResultSidePanel";
+import { SessionHistoryModal } from "../_components/SessionHistoryModal";
+import { SlidingLayout } from "../_components/SlidingLayout";
+import { sidePanelEventManager } from "../_components/ToolCallView";
 
 export default function HomePage() {
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -33,7 +31,6 @@ export default function HomePage() {
   const [sessionHistory, setSessionHistory] = useState<(Message[] | { messages: Message[]; createdAt: number })[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [browserMode, setBrowserMode] = useState(false);
 
   // 确保客户端渲染
   useEffect(() => {
@@ -101,26 +98,14 @@ export default function HomePage() {
        }
      };
 
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (_event: BeforeUnloadEvent) => {
        // Abort all user tasks when page is about to unload
-       handleAbortAllUserTasks();
+       void handleAbortAllUserTasks();
        // Also abort local controller if exists
        if (abortControllerRef.current) {
          abortControllerRef.current.abort();
          abortControllerRef.current = null;
        }
-     };
-
-     const handleVisibilityChange = () => {
-       // 注释掉自动中止逻辑，避免页面切换时误杀任务
-       // When page becomes hidden, abort all user tasks to save resources
-       // if (document.hidden) {
-       //   handleAbortAllUserTasks();
-       //   if (abortControllerRef.current) {
-       //     abortControllerRef.current.abort();
-       //     abortControllerRef.current = null;
-       //   }
-       // }
      };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -266,8 +251,6 @@ export default function HomePage() {
         isOpen={sidePanelOpen}
         onClose={() => setSidePanelOpen(false)}
         sidePanel={<ResultSidePanel task={selectedTask} />}
-        browserMode={browserMode}
-        onBrowserModeChange={setBrowserMode}
       >
         <div className="flex h-screen w-full flex-col relative z-10">
           {/* Header - 使用AppHeader组件 */}
@@ -291,7 +274,7 @@ export default function HomePage() {
                           How can I help you today?
                         </h1>
                         <p className="text-gray-600 text-lg leading-relaxed">
-                          I'm your AI assistant. Ask me anything or start a conversation.
+                          I&apos;m your AI assistant. Ask me anything or start a conversation.
                         </p>
                       </div>
                     

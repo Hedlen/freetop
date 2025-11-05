@@ -1,21 +1,14 @@
-import {
-  BashOutlined,
-  DownOutlined,
-  GlobalOutlined,
-  PythonOutlined,
-  SearchOutlined,
-  UnorderedListOutlined,
-  UpOutlined,
-} from "@ant-design/icons";
-import { LRUCache } from "lru-cache";
-import { useMemo, useState, useEffect } from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import docco from "react-syntax-highlighter/dist/styles/docco";
+import { GlobalOutlined, PythonOutlined, SearchOutlined, UnorderedListOutlined } from "@ant-design/icons"
+import { LRUCache } from "lru-cache"
+import { useMemo, useEffect } from "react"
+import SyntaxHighlighter from "react-syntax-highlighter"
+import docco from "react-syntax-highlighter/dist/styles/docco"
 
-import { cn } from "~/core/utils";
-import { type ToolCallTask } from "~/core/workflow";
-import { EnhancedSearchResults } from "./EnhancedSearchResults";
-import { EnhancedBrowserView } from "./EnhancedBrowserView";
+import { cn } from "~/core/utils"
+import { type ToolCallTask } from "~/core/workflow"
+
+import { EnhancedBrowserView } from "./EnhancedBrowserView"
+import { EnhancedSearchResults } from "./EnhancedSearchResults"
 
 // 全局事件管理器
 interface SidePanelEvent {
@@ -83,7 +76,7 @@ export function ToolCallView({ task }: { task: ToolCallTask }) {
         window.dispatchEvent(browserToolResultEvent);
       }
     }
-  }, [task.id, task.payload.toolName, task.state, task.payload.output]);
+  }, [task.id, task.payload.toolName, task.state, task.payload.output, task.payload.input]);
 
   const renderToolView = () => {
     if (task.payload.toolName === "tavily_search") {
@@ -157,13 +150,7 @@ function BrowserToolCallView({
 
 const pageCache = new LRUCache<string, string>({ max: 100 });
 function CrawlToolCallView({ task }: { task: ToolCallTask<{ url: string }> }) {
-  const results = useMemo(() => {
-    try {
-      return JSON.parse(task.payload.output ?? "") ?? null;
-    } catch (error) {
-      return null;
-    }
-  }, [task.payload.output]);
+  // Removed unused 'results' parsing
   const title = useMemo(() => {
     return pageCache.get(task.payload.input.url);
   }, [task.payload.input.url]);
@@ -215,7 +202,7 @@ function TravilySearchToolCallView({
         pageCache.set(result.url, result.title);
       });
       return results;
-    } catch (error) {
+    } catch {
       return [];
     }
   }, [task.payload.output]);
@@ -261,7 +248,7 @@ function TravilySearchToolCallView({
               results={results.map((result: { url: string; title: string; content?: string }) => ({
                 url: result.url,
                 title: result.title,
-                snippet: result.content || "点击查看完整内容",
+                snippet: result.content ?? "点击查看完整内容",
               }))}
               query={task.payload.input.query}
               className="max-w-[640px]"

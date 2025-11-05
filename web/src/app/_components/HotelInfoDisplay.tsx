@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+
 import { cn } from "~/core/utils";
+
 import { Markdown } from "./Markdown";
 
 interface HotelInfo {
@@ -60,7 +62,7 @@ export function HotelInfoDisplay({ content, className }: HotelInfoDisplayProps) 
     return parseHotelInfo(content);
   }, [content]);
 
-  const hasHotelData = hotelInfo.name || hotelInfo.price || hotelInfo.rating;
+  const hasHotelData = (hotelInfo.name ?? hotelInfo.price ?? hotelInfo.rating) ? true : false;
 
   if (!hasHotelData) {
     return (
@@ -82,8 +84,8 @@ export function HotelInfoDisplay({ content, className }: HotelInfoDisplayProps) 
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold text-gray-900">
-                {hotelInfo.name || "酒店信息"}
+              <h3 className="text;base font-bold text-gray-900">
+                {hotelInfo.name ?? "酒店信息"}
               </h3>
               {hotelInfo.location && (
                 <div className="mt-1 flex items-center text-gray-600">

@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+
 import { cn } from "~/core/utils";
+
 import { ContentDetailModal } from "./ContentDetailModal";
-import { Markdown } from "./Markdown";
 
 interface BrowserResult {
   url: string;
@@ -30,7 +32,7 @@ export function EnhancedBrowserView({
   const [browserResult, setBrowserResult] = useState<BrowserResult | null>(null);
 
   const detectContentType = (url: string, content?: string): BrowserResult["type"] => {
-    const text = (url + " " + (content || "")).toLowerCase();
+    const text = (url + " " + (content ?? "")).toLowerCase();
     
     if (text.includes("flight") || text.includes("航班") || text.includes("机票")) {
       return "flight";
@@ -122,12 +124,12 @@ export function EnhancedBrowserView({
 
   const handleViewDetails = () => {
     const type = detectContentType(url, result);
-    const title = extractTitle(result) || new URL(url).hostname;
+    const title = extractTitle(result) ?? new URL(url).hostname;
     
     setBrowserResult({
       url,
       title,
-      content: result || "无法获取页面内容",
+      content: result ?? "无法获取页面内容",
       type,
     });
     setIsModalOpen(true);
@@ -137,15 +139,15 @@ export function EnhancedBrowserView({
     if (!content) return undefined;
     
     // 尝试从内容中提取标题
-    const titleMatch = content.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch) {
-      return titleMatch[1].trim();
+    const titleExec = /<title[^>]*>([^<]+)<\/title>/i.exec(content);
+    if (titleExec) {
+      return titleExec[1].trim();
     }
     
     // 尝试从markdown标题中提取
-    const h1Match = content.match(/^#\s+(.+)$/m);
-    if (h1Match) {
-      return h1Match[1].trim();
+    const h1Exec = /^#\s+(.+)$/m.exec(content);
+    if (h1Exec) {
+      return h1Exec[1].trim();
     }
     
     // 使用内容的前50个字符作为标题
@@ -164,7 +166,7 @@ export function EnhancedBrowserView({
   };
 
   const type = detectContentType(url, result);
-  const title = extractTitle(result) || new URL(url).hostname;
+  const title = extractTitle(result) ?? new URL(url).hostname;
   const summary = getSummary(result);
 
   return (
@@ -189,14 +191,13 @@ export function EnhancedBrowserView({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <img
+                  <Image
                     className="h-4 w-4 rounded-full bg-slate-100 shadow"
                     src={new URL(url).origin + "/favicon.ico"}
                     alt={title}
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        "https://perishablepress.com/wp/wp-content/images/2021/favicon-standard.png";
-                    }}
+                    width={16}
+                    height={16}
+                    unoptimized
                   />
                   {getContentBadge(type)}
                 </div>
@@ -244,8 +245,8 @@ export function EnhancedBrowserView({
             setIsModalOpen(false);
             setBrowserResult(null);
           }}
-          title={browserResult.title || "网页内容"}
-          content={browserResult.content || ""}
+          title={browserResult.title ?? "网页内容"}
+          content={browserResult.content ?? ""}
           url={browserResult.url}
           type={browserResult.type}
         />

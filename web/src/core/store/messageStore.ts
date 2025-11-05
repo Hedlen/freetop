@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Message } from '../messaging';
+
+import { type Message } from '../messaging';
 
 interface MessageStore {
   messages: Message[];
@@ -31,6 +32,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
           } else {
             // 如果类型不匹配，只更新非类型相关的字段
             const { type, content, ...safeUpdates } = updates;
+            if (type || content) {
+              // 显式忽略这些字段以避免未使用变量警告
+            }
             return { ...msg, ...safeUpdates } as Message;
           }
         }

@@ -1,7 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+
 import { cn } from "~/core/utils";
+
 import { ContentDetailModal } from "./ContentDetailModal";
 
 interface SearchResult {
@@ -20,14 +23,14 @@ interface EnhancedSearchResultsProps {
 
 export function EnhancedSearchResults({
   results,
-  query,
+  query: _query,
   className,
 }: EnhancedSearchResultsProps) {
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const detectResultType = (title: string, content?: string): SearchResult["type"] => {
-    const text = (title + " " + (content || "")).toLowerCase();
+    const text = (title + " " + (content ?? "")).toLowerCase();
     
     if (text.includes("航班") || text.includes("机票") || text.includes("flight")) {
       return "flight";
@@ -47,8 +50,8 @@ export function EnhancedSearchResults({
       try {
         // 这里可以调用爬虫API获取页面内容
         // 暂时使用模拟数据
-        result.content = result.snippet || "正在加载内容...";
-      } catch (error) {
+        result.content = result.snippet ?? "正在加载内容...";
+      } catch {
         result.content = "无法加载页面内容";
       }
     }
@@ -111,7 +114,7 @@ export function EnhancedSearchResults({
   return (
     <div className={cn("space-y-2", className)}>
       {results.map((result, index) => {
-        const type = detectResultType(result.title, result.content || result.snippet);
+        const type = detectResultType(result.title, result.content ?? result.snippet);
         
         return (
           <div
@@ -125,14 +128,13 @@ export function EnhancedSearchResults({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <img
+                    <Image
                       className="h-3 w-3 rounded-full bg-slate-100 shadow"
                       src={new URL(result.url).origin + "/favicon.ico"}
                       alt={result.title}
-                      onError={(e) => {
-                        e.currentTarget.src =
-                          "https://perishablepress.com/wp/wp-content/images/2021/favicon-standard.png";
-                      }}
+                      width={12}
+                      height={12}
+                      unoptimized
                     />
                     {getResultBadge(type)}
                   </div>
@@ -147,7 +149,7 @@ export function EnhancedSearchResults({
                 </h3>
                 
                 <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">
-                  {result.snippet || "点击查看完整内容"}
+                  {result.snippet ?? "点击查看完整内容"}
                 </p>
                 
                 <div className="mt-1 flex items-center justify-between">
@@ -182,7 +184,7 @@ export function EnhancedSearchResults({
             setSelectedResult(null);
           }}
           title={selectedResult.title}
-          content={selectedResult.content || selectedResult.snippet || ""}
+          content={selectedResult.content ?? selectedResult.snippet ?? ""}
           url={selectedResult.url}
           type={selectedResult.type}
         />

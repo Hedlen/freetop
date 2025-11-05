@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { cn } from '~/core/utils';
 
 interface LoginModalProps {
@@ -54,15 +55,11 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           window.dispatchEvent(new CustomEvent('loginStateChanged'));
           
           // 调用父组件的登录回调
-          if (onLogin) {
-            onLogin(username, password);
-          }
-          if (onLoginSuccess) {
-            onLoginSuccess(result.user);
-          }
+          onLogin?.(username, password);
+          onLoginSuccess?.(result.user);
           onClose();
         } else {
-          setError(result.message || '登录失败');
+          setError(result.message ?? '登录失败');
         }
       } else {
         // 注册逻辑
@@ -104,18 +101,14 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           window.dispatchEvent(new CustomEvent('loginStateChanged'));
           
           // 调用父组件的登录回调
-          if (onLogin) {
-            onLogin(username, password);
-          }
-          if (onLoginSuccess) {
-            onLoginSuccess(result.user);
-          }
+          onLogin?.(username, password);
+          onLoginSuccess?.(result.user);
           onClose();
         } else {
-          setError(result.message || '注册失败');
+          setError(result.message ?? '注册失败');
         }
       }
-    } catch (err) {
+    } catch {
       setError('网络错误，请重试');
     } finally {
       setLoading(false);

@@ -57,7 +57,7 @@ export const useSessionStore = create<SessionStore>()(persist(
       set((state) => {
         const newSessions = state.sessions.filter((session) => session.id !== id);
         const newCurrentSessionId = state.currentSessionId === id 
-          ? (newSessions.length > 0 ? newSessions[0]?.id || null : null)
+          ? (newSessions.length > 0 ? newSessions[0]?.id ?? null : null)
           : state.currentSessionId;
         
         return {

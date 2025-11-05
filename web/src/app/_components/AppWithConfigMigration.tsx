@@ -4,7 +4,9 @@
  */
 
 import React from 'react';
+
 import { useAuth } from '~/core/hooks/useAuth';
+
 import ConfigMigrationDialog from './ConfigMigrationDialog';
 
 interface AppWithConfigMigrationProps {
@@ -29,8 +31,8 @@ export function AppWithConfigMigration({ children }: AppWithConfigMigrationProps
             skipMigration();
           }
         }}
-        localConfig={migrationState.localConfig || { deepThinkingMode: false, searchBeforePlanning: false }}
-        cloudConfig={migrationState.cloudConfig || { deepThinkingMode: false, searchBeforePlanning: false }}
+        localConfig={migrationState.localConfig ?? { deepThinkingMode: false, searchBeforePlanning: false }}
+        cloudConfig={migrationState.cloudConfig ?? { deepThinkingMode: false, searchBeforePlanning: false }}
         onMigrate={performMigration}
         onSkip={skipMigration}
       />

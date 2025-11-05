@@ -5,7 +5,7 @@ import mock from "./mock-3.txt";
 import { type ChatEvent } from "./types";
 
 export async function* chatStream(
-  userMessage: Message,
+  _userMessage: Message,
 ): AsyncIterable<ChatEvent> {
   for (const chunk of mock.split("\n\n")) {
     const lines = chunk.split("\n");

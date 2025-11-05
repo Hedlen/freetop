@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+
 import { cn } from "~/core/utils";
+
 import { Markdown } from "./Markdown";
 
 interface ProductInfo {
@@ -94,7 +96,7 @@ export function ProductInfoDisplay({ content, className }: ProductInfoDisplayPro
     };
   };
 
-  const hasProductData = productInfo.name || productInfo.price || productInfo.brand;
+  const hasProductData = productInfo.name ?? productInfo.price ?? productInfo.brand;
 
   if (!hasProductData) {
     return (
@@ -117,7 +119,7 @@ export function ProductInfoDisplay({ content, className }: ProductInfoDisplayPro
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold text-gray-900">
-                {productInfo.name || "商品信息"}
+                {productInfo.name ?? "商品信息"}
               </h3>
               
               {/* 品牌和分类 */}

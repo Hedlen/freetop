@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
-import { X } from 'lucide-react';
-import { cn } from '~/core/utils';
-import { type Message } from '~/core/messaging';
+import { X } from 'lucide-react'
+import React from 'react'
+
+import { type Message } from '~/core/messaging'
 
 type SessionData = Message[] | { messages: Message[]; createdAt: number };
 
@@ -78,7 +78,7 @@ export function SessionHistoryModal({
                   const bTime = Array.isArray(b.sessionData) ? 0 : b.sessionData.createdAt;
                   return bTime - aTime; // 最新的在前面
                 })
-                .map(({ sessionData, originalIndex }, index) => {
+                .map(({ sessionData, originalIndex }, _index) => {
                 const messages = Array.isArray(sessionData) ? sessionData : sessionData.messages;
                 const firstMessage = messages[0];
                 const title = typeof firstMessage?.content === 'string' 

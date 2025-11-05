@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+
 import { migrateLocalConfigToCloud, getLocalConfig, getCloudConfig } from '../utils/config';
 
 // 模拟用户数据接口
@@ -108,11 +109,11 @@ async function loginUser(email: string, password: string): Promise<User> {
         localStorage.setItem('auth_token', data.token);
         return data.user;
       } else {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data.message ?? 'Login failed');
       }
     } else {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Login failed');
+      throw new Error(errorData.message ?? 'Login failed');
     }
   } catch (error) {
     console.error('Login error:', error);
@@ -160,11 +161,11 @@ export function useAuth() {
       const localConfig = getLocalConfig();
       const cloudConfig = await getCloudConfig();
       
-      const hasLocalConfig = localConfig.deepThinkingMode || localConfig.searchBeforePlanning;
-      const hasCloudConfig = cloudConfig.deepThinkingMode || cloudConfig.searchBeforePlanning;
+      const hasLocalConfig = (localConfig.deepThinkingMode ?? false) || (localConfig.searchBeforePlanning ?? false);
+      const hasCloudConfig = (cloudConfig?.deepThinkingMode ?? false) || (cloudConfig?.searchBeforePlanning ?? false);
       const configsDiffer = 
-        localConfig.deepThinkingMode !== cloudConfig.deepThinkingMode ||
-        localConfig.searchBeforePlanning !== cloudConfig.searchBeforePlanning;
+        (localConfig.deepThinkingMode ?? false) !== (cloudConfig?.deepThinkingMode ?? false) ||
+        (localConfig.searchBeforePlanning ?? false) !== (cloudConfig?.searchBeforePlanning ?? false);
 
       const needed = hasLocalConfig && (!hasCloudConfig || configsDiffer);
       
@@ -223,7 +224,7 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isLoggedIn, checkMigrationNeeded]);
 
   // 登录
   const login = useCallback(async (email: string, password: string) => {
@@ -237,14 +238,14 @@ export function useAuth() {
       const migration = await checkMigrationNeeded();
       setMigrationState(migration);
       
-      return user;
+      await checkAuth();
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [checkMigrationNeeded]);
+  }, [checkMigrationNeeded, checkAuth]);
 
   // 登出
   const logout = useCallback(async () => {
@@ -253,56 +254,47 @@ export function useAuth() {
       await logoutUser();
       setUser(null);
       setIsLoggedIn(false);
-      setMigrationState({
-        needed: false,
-        localConfig: null,
-        cloudConfig: null,
-        completed: false
-      });
+      
+      await checkAuth();
     } catch (error) {
       console.error('Logout failed:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkAuth]);
 
-  // 初始化时检查认证状态
+  // 初始化检查认证状态
   useEffect(() => {
-    checkAuth();
-  }, []);
+    void checkAuth();
+  }, [checkAuth]);
 
   return {
     user,
-    loading,
     isLoggedIn,
+    loading,
     migrationState,
+    performMigration,
+    skipMigration,
+    refresh: checkAuth,
     login,
     logout,
-    checkAuth,
-    performMigration,
-    skipMigration
   };
 }
 
 /**
- * 简化版Hook，仅返回登录状态
+ * 简化版登录状态Hook
  */
 export function useIsLoggedIn(): boolean {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const checkStatus = useCallback(async () => {
+    const user = await checkAuthStatus();
+    setIsLoggedIn(!!user);
+  }, []);
 
   useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const user = await checkAuthStatus();
-        setIsLoggedIn(!!user);
-      } catch (error) {
-        console.error('Failed to check auth status:', error);
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkStatus();
-  }, []);
+    void checkStatus();
+  }, [checkStatus]);
 
   return isLoggedIn;
 }
