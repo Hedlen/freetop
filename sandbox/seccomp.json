@@ -1,0 +1,11 @@
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "archMap": [
+    {"architecture": "SCMP_ARCH_X86_64", "subArchitectures": ["SCMP_ARCH_X86", "SCMP_ARCH_X32"]},
+    {"architecture": "SCMP_ARCH_AARCH64", "subArchitectures": ["SCMP_ARCH_ARM"]}
+  ],
+  "syscalls": [
+    {"names": ["read", "write", "exit", "sigreturn", "futex", "nanosleep", "clock_gettime", "close", "brk", "mmap", "mprotect", "munmap", "rt_sigaction", "rt_sigprocmask", "clone", "openat", "statx", "newfstatat", "fstat", "lseek", "getpid", "gettid", "getrandom", "socket", "connect", "recvfrom", "sendto"], "action": "SCMP_ACT_ALLOW"},
+    {"names": ["mount", "umount2", "ptrace", "kexec_load", "swapon", "swapoff", "reboot", "open_by_handle_at", "bpf"], "action": "SCMP_ACT_ERRNO"}
+  ]
+}

@@ -22,6 +22,7 @@ from src.service.workflow_service import run_agent_workflow
 from src.services.user_service import UserService
 from src.database.connection import init_database
 from src.api.proxy_test import router as proxy_router
+from src.api.sandbox_router import router as sandbox_router
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ app.add_middleware(
 
 # Include proxy test router
 app.include_router(proxy_router)
+app.include_router(sandbox_router)
 
 # Create the graph
 graph = build_graph()
