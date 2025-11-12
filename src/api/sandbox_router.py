@@ -4,13 +4,14 @@ from src.sandbox.models import ExecuteRequest, ExecuteResult, RenderRequest, Ren
 
 router = APIRouter(prefix="/api/sandbox", tags=["sandbox"])
 
-_executor = SandboxExecutor()
+def _get_executor() -> SandboxExecutor:
+    return SandboxExecutor()
 
 
 @router.post("/execute", response_model=ExecuteResult)
 def execute(req: ExecuteRequest):
     try:
-        return _executor.execute(req)
+        return _get_executor().execute(req)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -18,6 +19,6 @@ def execute(req: ExecuteRequest):
 @router.post("/render", response_model=RenderResult)
 def render(req: RenderRequest):
     try:
-        return _executor.render(req)
+        return _get_executor().render(req)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

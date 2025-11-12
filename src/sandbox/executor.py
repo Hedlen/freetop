@@ -52,8 +52,10 @@ class SandboxExecutor:
         return ("python", "bash -lc 'python main.py || true'")
 
     def _run_static_checks(self, container) -> Tuple[str, str]:
-        eslint = container.exec_run("bash -lc 'if ls **/*.js **/*.ts 1>/dev/null 2>&1; then eslint . --ext .js,.ts || true; fi'", demux=True)
-        pylint = container.exec_run("bash -lc 'if ls **/*.py 1>/dev/null 2>&1; then pylint $(git ls-files "*.py" || ls **/*.py) || true; fi'", demux=True)
+        eslint_cmd = r"""bash -lc 'files=$(find . -type f -name "*.js" -o -name "*.ts"); if [ -n "$files" ]; then eslint . --ext .js,.ts || true; fi'"""
+        pylint_cmd = r"""bash -lc 'files=$(find . -type f -name "*.py"); if [ -n "$files" ]; then pylint $files || true; fi'"""
+        eslint = container.exec_run(eslint_cmd, demux=True)
+        pylint = container.exec_run(pylint_cmd, demux=True)
         eslint_out = self._format_output(eslint)
         pylint_out = self._format_output(pylint)
         return eslint_out, pylint_out
