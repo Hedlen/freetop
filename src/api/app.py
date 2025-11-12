@@ -149,16 +149,23 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
                     "data": json.dumps({"task_id": task_id}, ensure_ascii=False),
                 }
                 
-                async for event in run_agent_workflow(
-                    messages,
-                    request.debug,
-                    request.deep_thinking_mode,
-                    request.search_before_planning,
-                    request.team_members,
-                    abort_event=abort_event,
-                    user_id=user_id,
-                    request_headers=dict(req.headers),
-                ):
+                use_simple = not request.deep_thinking_mode and not request.search_before_planning
+                from src.service.workflow_service import run_simple_chat
+                generator = (
+                    run_simple_chat(messages, user_id=user_id)
+                    if use_simple
+                    else run_agent_workflow(
+                        messages,
+                        request.debug,
+                        request.deep_thinking_mode,
+                        request.search_before_planning,
+                        request.team_members,
+                        abort_event=abort_event,
+                        user_id=user_id,
+                        request_headers=dict(req.headers),
+                    )
+                )
+                async for event in generator:
                     # Check if client is still connected or abort requested
                     if await req.is_disconnected():
                         logger.info("Client disconnected, stopping workflow")

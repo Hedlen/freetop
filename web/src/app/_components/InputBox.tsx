@@ -96,37 +96,37 @@ export function InputBox({
 
           <button
             className={cn(
-              "flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl border px-2 sm:px-4 lg:px-5 xl:px-6 text-xs sm:text-sm lg:text-base transition-all duration-300 hover:shadow-lg",
+              "h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded-md border transition-all duration-200",
               deepThinkingMode
-                ? "border-blue-400 bg-blue-100 text-blue-700 shadow-lg shadow-blue-500/20"
+                ? "border-blue-400 bg-blue-50 text-blue-700 shadow-blue-500/20"
                 : "border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700",
             )}
             onClick={() => {
               toggleDeepThinking();
             }}
             disabled={configLoading}
+            title="深度思考"
+            aria-label="深度思考"
           >
             <Atom className={cn("h-4 w-4", deepThinkingMode ? "text-blue-600" : "text-gray-600")} />
-            <span>Deep Think</span>
-            {/* {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>} */}
           </button>
           <button
             className={cn(
-              "flex h-6 sm:h-8 lg:h-9 xl:h-10 items-center gap-1 rounded-lg border px-2 sm:px-3 lg:px-4 xl:px-5 text-xs sm:text-sm lg:text-base transition-all duration-200",
+              "h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded-md border transition-all duration-200",
               searchBeforePlanning
-                ? "border-blue-400 bg-blue-100 text-blue-700 shadow-lg shadow-blue-500/20"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-blue-100 hover:border-blue-400",
+                ? "border-blue-400 bg-blue-50 text-blue-700 shadow-blue-500/20"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-400",
             )}
             onClick={() => {
                 toggleSearchPlanning();
               }}
               disabled={configLoading}
+              title="优先搜索"
+              aria-label="优先搜索"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span>Search First</span>
-            {/* {syncing && <span className="text-xs text-blue-500 ml-1">(同步中...)</span>} */}
           </button>
         </div>
         <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">

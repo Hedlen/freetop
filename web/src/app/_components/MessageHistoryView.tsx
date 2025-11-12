@@ -62,11 +62,36 @@ export function MessageHistoryView({ messages, responding, abortController, clas
   const SCROLL_MEMORY_KEY = 'chat_scrollTop';
   const lastScrollHeightRef = useRef(0);
   const lastScrollSetTsRef = useRef(0);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const getDynamicThreshold = useCallback((el: HTMLDivElement | null, base: number) => {
+    const h = el?.clientHeight ?? 0;
+    const d = Math.floor(h * 0.15);
+    const t = Math.max(50, d);
+    return Math.max(50, Math.min(base, t));
+  }, []);
   const hasAssistantContent = useMemo(() => {
     return messages.some(
       (m) => m.role === "assistant" && m.type === "text" && typeof m.content === "string" && m.content.trim().length > 0,
     );
   }, [messages]);
+
+  // 当开始生成助手回复时，主动滚动到底部，避免需要手动拖动
+  useEffect(() => {
+    if (!responding) return;
+    setIsLockedByUser(false);
+    const container = scrollElRef.current ?? containerRef.current;
+    if (container) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        lastScrollHeightRef.current = container.scrollHeight;
+        lastScrollSetTsRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      });
+    } else if (endRef.current) {
+      requestAnimationFrame(() => {
+        endRef.current?.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+  }, [responding]);
   const showInlineSpinner = responding && !hasAssistantContent;
 
   // 防抖处理滚动事件
@@ -115,8 +140,9 @@ export function MessageHistoryView({ messages, responding, abortController, clas
       
       const { scrollTop, scrollHeight, clientHeight } = container;
       const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-      const isAtBottom = distanceToBottom < 50;
-      setIsNearBottom(distanceToBottom < 100);
+      const t = getDynamicThreshold(container, 100);
+      const isAtBottom = distanceToBottom < Math.floor(t * 0.5);
+      setIsNearBottom(distanceToBottom < t);
       
       if (!isAtBottom) {
         setIsUserScrolling(true);
@@ -156,8 +182,9 @@ export function MessageHistoryView({ messages, responding, abortController, clas
         container.scrollTop += e.deltaY;
         const { scrollTop, scrollHeight, clientHeight } = container;
         const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-        setIsNearBottom(distanceToBottom < 100);
-        if (distanceToBottom >= 100) {
+        const t = getDynamicThreshold(container, 100);
+        setIsNearBottom(distanceToBottom < t);
+        if (distanceToBottom >= t) {
           setIsLockedByUser(true);
         }
       };
@@ -236,13 +263,20 @@ export function MessageHistoryView({ messages, responding, abortController, clas
             setIsLockedByUser(true);
           });
         }
+      } else {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+          setIsLockedByUser(false);
+          lastScrollHeightRef.current = container.scrollHeight;
+          lastScrollSetTsRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        });
       }
     } catch {}
   }, []);
 
   // 优化的自动滚动逻辑
   useEffect(() => {
-    if (!isUserScrolling && isWindowVisible && !isResizing) {
+    if (!isUserScrolling && isWindowVisible && !isResizing && !isLockedByUser) {
       const scrollToBottom = () => {
         if (rafScrollPendingRef.current) return;
         rafScrollPendingRef.current = true;
@@ -250,16 +284,13 @@ export function MessageHistoryView({ messages, responding, abortController, clas
           const container = scrollElRef.current ?? containerRef.current;
           if (container) {
             const { scrollTop, scrollHeight, clientHeight } = container;
-            const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
-            if (nearBottom && !isLockedByUser) {
-              const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-              const changed = scrollHeight > (lastScrollHeightRef.current + 8);
-              const enoughTime = now - lastScrollSetTsRef.current > 50;
-              if (changed && enoughTime) {
-                container.scrollTop = scrollHeight;
-                lastScrollHeightRef.current = scrollHeight;
-                lastScrollSetTsRef.current = now;
-              }
+            const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            const changed = scrollHeight > (lastScrollHeightRef.current + 4);
+            const enoughTime = now - lastScrollSetTsRef.current > 32;
+            if (changed && enoughTime) {
+              container.scrollTop = scrollHeight;
+              lastScrollHeightRef.current = scrollHeight;
+              lastScrollSetTsRef.current = now;
             }
           }
           rafScrollPendingRef.current = false;
@@ -272,6 +303,44 @@ export function MessageHistoryView({ messages, responding, abortController, clas
       }
     }
   }, [messages, responding, isUserScrolling, isWindowVisible, isResizing, isLockedByUser]);
+
+  // 当用户发送新消息时，强制滚动到底部以显示最新内容
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    const lastId = String(last.id ?? "");
+    const isNewLast = lastMessageIdRef.current !== lastId;
+    lastMessageIdRef.current = lastId;
+    if (isNewLast && last.role === "user") {
+      setIsLockedByUser(false);
+      const container = scrollElRef.current ?? containerRef.current;
+      if (container) {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+          lastScrollHeightRef.current = container.scrollHeight;
+          lastScrollSetTsRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        });
+      } else if (endRef.current) {
+        requestAnimationFrame(() => {
+          endRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
+    }
+    if (isNewLast && last.role === "assistant" && !isLockedByUser) {
+      const container = scrollElRef.current ?? containerRef.current;
+      if (container) {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+          lastScrollHeightRef.current = container.scrollHeight;
+          lastScrollSetTsRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        });
+      } else if (endRef.current) {
+        requestAnimationFrame(() => {
+          endRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
+    }
+  }, [messages]);
 
   return (
     <div 

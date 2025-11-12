@@ -22,6 +22,14 @@ function unwrapMarkdownFence(text: string): string {
   return text;
 }
 
+function stripReportHeadingAndSummary(text: string): string {
+  if (!text) return "";
+  let t = text.trim();
+  t = t.replace(/^#\s+[^\n]+\s*\n?/, "");
+  t = t.replace(/(^|\n)#{1,6}\s*执行摘要\s*\n[\s\S]*?(?=(\n#{1,6}\s)|$)/, "\n");
+  return t.trim();
+}
+
 export function WorkflowProgressView({
   className,
   workflow,
@@ -30,7 +38,12 @@ export function WorkflowProgressView({
   workflow: Workflow;
 }) {
   const steps = useMemo(() => {
-    return workflow.steps.filter((step) => step.agentName !== "reporter");
+    const { searchBeforePlanning } = getInputConfigSync();
+    return workflow.steps.filter((step) => {
+      if (step.agentName === "reporter") return false;
+      if (step.agentName === "researcher" && !searchBeforePlanning) return false;
+      return true;
+    });
   }, [workflow]);
   const reportStep = useMemo(() => {
     return workflow.steps.find((step) => step.agentName === "reporter");
@@ -46,6 +59,7 @@ export function WorkflowProgressView({
 
   // 移除最外层 markdown 代码围栏，避免整个内容被当作代码块显示
   const sanitizedReportContent = useMemo(() => unwrapMarkdownFence(reportContent), [reportContent]);
+  const cleanedReportContent = useMemo(() => stripReportHeadingAndSummary(sanitizedReportContent), [sanitizedReportContent]);
 
   // 调试日志，确认内容是否为 markdown 以及基本统计
   useEffect(() => {
@@ -82,11 +96,11 @@ export function WorkflowProgressView({
         <div className="agent-reply-card">
           <div className="agent-reply-content">
             <Markdown className="agent-prose break-words text-sm">
-              {sanitizedReportContent}
+              {cleanedReportContent}
             </Markdown>
           </div>
           <div className="agent-reply-toolbar justify-start">
-            <ReportActions reportContent={sanitizedReportContent} />
+            <ReportActions reportContent={cleanedReportContent} />
           </div>
         </div>
       )}

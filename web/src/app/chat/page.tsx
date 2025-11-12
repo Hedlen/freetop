@@ -18,8 +18,10 @@ import { ResultSidePanel } from "../_components/ResultSidePanel";
 import { SessionHistoryModal } from "../_components/SessionHistoryModal";
 import { SlidingLayout } from "../_components/SlidingLayout";
 import { sidePanelEventManager } from "../_components/ToolCallView";
+import { useInputConfigValue } from "~/core/hooks/useInputConfig";
 
 export default function HomePage() {
+  const inputConfig = useInputConfigValue();
   const abortControllerRef = useRef<AbortController | null>(null);
   const messages = useStore((state) => state.messages);
   const responding = useStore((state) => state.responding);
@@ -278,23 +280,24 @@ export default function HomePage() {
                         </p>
                       </div>
                     
-                      {/* Quick Start Examples */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                        <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 cursor-pointer">
-                          <div className="text-sm font-medium text-gray-800 mb-1">💡 Get Ideas</div>
-                          <div className="text-xs text-gray-600">Brainstorm creative solutions</div>
-                        </div>
-                        <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 cursor-pointer">
-                          <div className="text-sm font-medium text-gray-800 mb-1">📝 Write Content</div>
-                          <div className="text-xs text-gray-600">Create articles, emails, and more</div>
-                        </div>
-                        <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 cursor-pointer">
-                          <div className="text-sm font-medium text-gray-800 mb-1">🔍 Research</div>
-                          <div className="text-xs text-gray-600">Find information and insights</div>
-                        </div>
-                        <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 cursor-pointer">
-                          <div className="text-sm font-medium text-gray-800 mb-1">💻 Code Help</div>
-                          <div className="text-xs text-gray-600">Debug and write code</div>
+                      {/* Common Questions */}
+                      <div className="mt-6">
+                        <div className="text-sm font-medium text-gray-700 mb-2">常用问题</div>
+                        <div className="flex flex-col gap-2">
+                          {[
+                            "帮我总结这段文本",
+                            "生成一个三天的上海旅行计划",
+                            "搜索并整理近期关于AI的行业新闻",
+                            "帮我优化这段React代码性能",
+                          ].map((q) => (
+                            <button
+                              key={q}
+                              className="text-left px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                              onClick={() => handleSendMessage(q, inputConfig)}
+                            >
+                              {q}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     </div>

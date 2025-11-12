@@ -6,6 +6,7 @@ from src.config import TEAM_MEMBER_CONFIGRATIONS, TEAM_MEMBERS
 from src.graph import build_graph
 from src.tools.browser import browser_tool
 from src.tools.smart_browser import smart_browser_tool
+from src.llms.llm import get_llm_by_type
 from langchain_community.adapters.openai import convert_message_to_dict
 import uuid
 
@@ -89,6 +90,8 @@ async def run_agent_workflow(
     workflow_id = str(uuid.uuid4())
 
     team_members = team_members if team_members else TEAM_MEMBERS
+    if not search_before_planning:
+        team_members = [m for m in team_members if m != "researcher"]
 
     streaming_llm_agents = [*team_members, "planner", "coordinator"]
 
@@ -348,3 +351,37 @@ async def run_agent_workflow(
             ],
         },
     }
+
+
+async def run_simple_chat(
+    user_input_messages: list,
+    user_id: Optional[int] = None,
+):
+    if not user_input_messages:
+        raise ValueError("Input could not be empty")
+    import uuid
+    workflow_id = str(uuid.uuid4())
+    agent_id = f"{workflow_id}_assistant_0"
+    llm = get_llm_by_type("basic", str(user_id) if user_id else None)
+    yield {
+        "event": "start_of_agent",
+        "data": {"agent_name": "assistant", "agent_id": agent_id},
+    }
+    last = user_input_messages[-1]
+    content = last.get("content") if isinstance(last, dict) else str(last)
+    full = ""
+    try:
+        for chunk in llm.stream(content):
+            piece = getattr(chunk, "content", "") or getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
+            if not piece:
+                continue
+            full += piece
+            yield {
+                "event": "message",
+                "data": {"message_id": agent_id, "delta": {"content": piece}},
+            }
+    finally:
+        yield {
+            "event": "end_of_agent",
+            "data": {"agent_name": "assistant", "agent_id": agent_id},
+        }
