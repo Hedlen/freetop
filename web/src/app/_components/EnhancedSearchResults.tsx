@@ -44,21 +44,8 @@ export function EnhancedSearchResults({
     return "general";
   };
 
-  const handleResultClick = async (result: SearchResult) => {
-    // 如果没有内容，尝试获取页面内容
-    if (!result.content) {
-      try {
-        // 这里可以调用爬虫API获取页面内容
-        // 暂时使用模拟数据
-        result.content = result.snippet ?? "正在加载内容...";
-      } catch {
-        result.content = "无法加载页面内容";
-      }
-    }
-    
-    result.type = detectResultType(result.title, result.content);
-    setSelectedResult(result);
-    setIsModalOpen(true);
+  const handleResultClick = (result: SearchResult) => {
+    window.open(result.url, "_blank");
   };
 
   const getResultIcon = (type: SearchResult["type"]) => {
@@ -119,76 +106,42 @@ export function EnhancedSearchResults({
         return (
           <div
             key={`${result.url}-${index}`}
-            className="enhanced-card group cursor-pointer p-2"
+            className="enhanced-card group cursor-pointer p-1 sm:p-1.5"
             onClick={() => handleResultClick({ ...result, type })}
           >
-            <div className="flex items-start space-x-2">
+            <div className="flex items-start space-x-1.5 sm:space-x-2">
               {getResultIcon(type)}
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Image
-                      className="h-3 w-3 rounded-full bg-slate-100 shadow"
+                      className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-slate-100 shadow"
                       src={new URL(result.url).origin + "/favicon.ico"}
                       alt={result.title}
-                      width={12}
-                      height={12}
+                      width={14}
+                      height={14}
                       unoptimized
                     />
                     {getResultBadge(type)}
                   </div>
                   
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-xs font-medium">
+                  <button className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-[10px] sm:text-[11px] font-medium">
                     查看详情 →
                   </button>
                 </div>
                 
-                <h3 className="mt-0.5 text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="mt-0.5 text-[12px] sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
                   {result.title}
                 </h3>
                 
-                <p className="mt-0.5 text-xs text-gray-600 line-clamp-2">
-                  {result.snippet ?? "点击查看完整内容"}
-                </p>
-                
-                <div className="mt-1 flex items-center justify-between">
-                  <a
-                    href={result.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-gray-500 hover:text-gray-700 truncate"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {result.url}
-                  </a>
-                  
-                  <div className="flex items-center space-x-2 text-xs text-gray-400">
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    <span>外部链接</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         );
       })}
       
-      {selectedResult && (
-        <ContentDetailModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedResult(null);
-          }}
-          title={selectedResult.title}
-          content={selectedResult.content ?? selectedResult.snippet ?? ""}
-          url={selectedResult.url}
-          type={selectedResult.type}
-        />
-      )}
+      
     </div>
   );
 }

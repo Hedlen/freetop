@@ -96,22 +96,6 @@ export function ToolCallView({ task }: { task: ToolCallTask }) {
   return (
     <div className="relative group">
       {renderToolView()}
-      {/* 详细查看按钮 */}
-      <button
-        onClick={handleDetailView}
-        className={cn(
-          "absolute top-2 right-2 opacity-0 group-hover:opacity-100",
-          "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs",
-          "transition-all duration-200 shadow-lg hover:shadow-xl",
-          "flex items-center gap-1"
-        )}
-      >
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-        详细
-      </button>
     </div>
   );
 }
@@ -229,7 +213,7 @@ function TravilySearchToolCallView({
           <span>搜索中...</span>
         </div>
       )}
-      {task.state !== "pending" && (
+      {task.state !== "pending" && results.length > 0 && (
         <div className="flex flex-col gap-2 pt-1">
           <div className="flex items-center gap-2">
             <div>

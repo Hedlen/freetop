@@ -129,6 +129,7 @@ async def run_agent_workflow(
                 "user_id": user_id,
             },
             version="v2",
+            config={"recursion_limit": 50},
         ):
             # Check for abort signal
             if abort_event and abort_event.is_set():

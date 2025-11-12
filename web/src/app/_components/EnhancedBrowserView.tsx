@@ -183,74 +183,41 @@ export function EnhancedBrowserView({
       </div>
       
       {result && (
-        <div className="enhanced-card group cursor-pointer p-4"
+        <div className="enhanced-card group cursor-pointer p-1 sm:p-1.5"
              onClick={handleViewDetails}>
-          <div className="flex items-start space-x-3">
+          <div className="flex items-start space-x-1.5 sm:space-x-2">
             {getContentIcon(type)}
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Image
-                    className="h-4 w-4 rounded-full bg-slate-100 shadow"
+                    className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-slate-100 shadow"
                     src={new URL(url).origin + "/favicon.ico"}
                     alt={title}
-                    width={16}
-                    height={16}
+                    width={14}
+                    height={14}
                     unoptimized
                   />
                   {getContentBadge(type)}
                 </div>
                 
-                <button className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 hover:text-blue-800 text-[10px] sm:text-[11px] font-medium">
                   查看完整内容 →
                 </button>
               </div>
               
-              <h3 className="mt-1 font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+              <h3 className="mt-1 text-[12px] sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
                 {title}
               </h3>
               
-              <p className="mt-1 text-sm text-gray-600 line-clamp-3">
-                {summary}
-              </p>
               
-              <div className="mt-2 flex items-center justify-between">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-gray-500 hover:text-gray-700 truncate"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {url}
-                </a>
-                
-                <div className="flex items-center space-x-2 text-xs text-gray-400">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  <span>浏览结果</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       )}
       
-      {browserResult && (
-        <ContentDetailModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setBrowserResult(null);
-          }}
-          title={browserResult.title ?? "网页内容"}
-          content={browserResult.content ?? ""}
-          url={browserResult.url}
-          type={browserResult.type}
-        />
-      )}
+      
     </div>
   );
 }

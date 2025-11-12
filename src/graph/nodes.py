@@ -121,13 +121,31 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Supervisor response: {response}")
 
+    # 防止在同一代理上反复循环：基于上一次的 next 以及重复计数进行限流
+    prev_next = state.get("next")
+    repeat_count = state.get("repeat_count", 0)
+    if prev_next == goto:
+        repeat_count += 1
+    else:
+        repeat_count = 0
+
+    # 当同一代理连续两次以上被选中时，尝试回退到 planner 做一次重新规划；
+    # 若仍然无法收敛（连续三次），则结束本轮，避免“Go to ...”重复。
+    if goto != "FINISH" and prev_next == goto:
+        if repeat_count == 1:
+            logger.info(f"Detected repeated delegation to {goto}, rerouting to planner for replanning")
+            goto = "planner" if "planner" in TEAM_MEMBERS else goto
+        elif repeat_count >= 2:
+            logger.info(f"Repeated delegation persists, terminating workflow to avoid loops")
+            goto = "__end__"
+
     if goto == "FINISH":
         goto = "__end__"
         logger.info("Workflow completed")
     else:
         logger.info(f"Supervisor delegating to: {goto}")
 
-    return Command(goto=goto, update={"next": goto})
+    return Command(goto=goto, update={"next": goto, "repeat_count": repeat_count})
 
 
 def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:

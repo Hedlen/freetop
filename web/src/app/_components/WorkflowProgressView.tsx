@@ -8,6 +8,7 @@ import type { WorkflowStep } from "~/types/workflow"
 
 import { Markdown } from "./Markdown"
 import { ToolCallView } from "./ToolCallView"
+import { getInputConfigSync } from "~/core/utils/config"
 
 // 统一移除最外层 markdown 代码块围栏，例如 ```markdown ... ``` 或 ```md ... ``` 或 ``` ... ```
 function unwrapMarkdownFence(text: string): string {
@@ -67,34 +68,10 @@ export function WorkflowProgressView({
 
   return (
     <div className="flex flex-col gap-3 sm:gap-6">
-      <div className={cn("grid grid-cols-1 lg:grid-cols-[200px_1fr] xl:grid-cols-[220px_1fr] overflow-hidden rounded-lg sm:rounded-2xl border min-h-[300px] sm:minh-[500px]", className)}>
-        <aside className="flex flex-col border-r bg-[rgba(0,0,0,0.02)] sticky top-0 h-fit max-h-[200px] sm:max-h-[300px] lg:max-h-[500px]">
-          <div className="flex-shrink-0 px-2 sm:px-4 py-2 sm:py-4 text-sm sm:text-base font-medium border-b bg-white/50">Flow</div>
-          <ol className="flex flex-col gap-1 sm:gap-3 px-2 sm:px-4 py-2 sm:py-4 overflow-y-auto">
-            {steps.map((step, index) => (
-              <li
-                key={step.id}
-                className="flex cursor-pointer items-center gap-2 sm:gap-3 p-1 sm:p-2 rounded-lg hover:bg-white/60 transition-colors"
-                onClick={() => {
-                  if (typeof document !== 'undefined') {
-                    const element = document.getElementById(step.id);
-                    if (element) {
-                      element.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }
-                  }
-                }}
-              >
-                <div className="flex h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-blue-400 flex-shrink-0"></div>
-                <div className="text-xs sm:text-sm font-medium">{index + 1}. {getStepName(step)}</div>
-              </li>
-            ))}
-          </ol>
-        </aside>
-        <main className="overflow-auto bg-white p-2 sm:p-4 lg:p-6">
-          <div className="max-w-full lg:max-w-4xl">
+      {/* 改为纯纵向内容区域，移除左侧Flow列表，符合图2风格 */}
+      <div className={cn("rounded-lg sm:rounded-xl border border-transparent bg-transparent", className)}>
+        <main className="overflow-auto p-1 sm:p-2 lg:p-3">
+          <div className="max-w-full lg:max-w-3xl xl:max-w-2xl">
             {steps.map((step, stepIndex) => (
               <StepContentView key={step.id} step={step} stepIndex={stepIndex} isLast={stepIndex === steps.length - 1} />
             ))}
@@ -102,25 +79,15 @@ export function WorkflowProgressView({
         </main>
       </div>
       {reportStep && (
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg sm:rounded-2xl border border-green-200 p-3 sm:p-6">
-          <div className="mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2 sm:gap-3">
-               <span className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-green-500 text-white text-xs sm:text-sm font-bold">
-                 ✓
-               </span>
-               Report
-             </h2>
-          </div>
-          <div className="bg-white rounded-lg p-3 sm:p-6 shadow-sm">
-            <Markdown className="prose prose-sm max-w-none">
+        <div className="agent-reply-card">
+          <div className="agent-reply-content">
+            <Markdown className="agent-prose break-words text-sm">
               {sanitizedReportContent}
             </Markdown>
           </div>
-        </div>
-      )}
-      {reportStep && (
-        <div className="flex justify-start">
-          <ReportActions reportContent={sanitizedReportContent} />
+          <div className="agent-reply-toolbar justify-start">
+            <ReportActions reportContent={sanitizedReportContent} />
+          </div>
         </div>
       )}
     </div>
@@ -149,13 +116,20 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
   }, [task]);
   const [showReason, setShowReason] = useState(false);
   const reason = task.payload.reason;
-  const markdown = `## ${plan.title ?? ""}\n\n${plan.steps?.map((step) => `- **${step.title ?? ""}**\n\n${step.description ?? ""}`).join("\n\n") ?? ""}`;
+  const markdown = `${plan.title ? `## ${plan.title}\n\n` : ""}${(plan.steps && plan.steps.length)
+    ? plan.steps.map((step) => {
+        const t = step.title ?? "";
+        const d = step.description ?? "";
+        if (!t && !d) return "";
+        return `- **${t}**\n\n${d}`;
+      }).filter(Boolean).join("\n\n")
+    : ""}`;
   return (
     <div className="space-y-4">
       {reason && (
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 w-full">
+        <div className="rounded-md p-2 border border-transparent bg-transparent w-full">
           <button
-            className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500 hover:bg-blue-600 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-wrap"
+            className="mb-2 flex items-center gap-2 rounded-md border px-2 py-1 text-[11px] text-gray-700 bg-transparent hover:bg-gray-100 transition-colors"
              onClick={() => setShowReason(!showReason)}
           >
             <Atom className="h-3 w-3 flex-shrink-0" />
@@ -167,7 +141,10 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
             )}
           </button>
           {showReason && (
-            <div className="bg-white rounded-md p-3 border-l-4 border-blue-400">
+            <div
+              className="rounded-md p-2 border border-gray-200 bg-transparent"
+              style={{ contentVisibility: 'auto' as any, containIntrinsicSize: '200px 600px', willChange: 'opacity' }}
+            >
               <Markdown className="text-gray-600 text-xs leading-relaxed prose-xs break-words whitespace-pre-wrap">
                 {reason}
               </Markdown>
@@ -175,9 +152,11 @@ function PlanTaskView({ task }: { task: ThinkingTask }) {
           )}
         </div>
       )}
-      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-        <Markdown className="prose prose-sm max-w-none">{markdown ?? ""}</Markdown>
-      </div>
+      {markdown && markdown.trim() && (
+        <div className="rounded-md p-2 border border-transparent bg-transparent">
+          <Markdown className="prose prose-sm max-w-none">{markdown}</Markdown>
+        </div>
+      )}
     </div>
   );
 }
@@ -239,8 +218,13 @@ function ReportActions({ reportContent }: { reportContent: string }) {
         const { getInputConfigSync } = await import('~/core/utils/config');
         const config = getInputConfigSync();
         
-        const inputMessages = [{ content: userMessage.content ?? '', role: 'user' }];
-        await sendMessage(inputMessages, {
+        const retryMessage = {
+          id: '',
+          role: 'user',
+          type: 'text',
+          content: userMessage.content ?? '',
+        };
+        await sendMessage(retryMessage as any, {
           deepThinkingMode: config.deepThinkingMode ?? false,
           searchBeforePlanning: config.searchBeforePlanning ?? false,
         });
@@ -261,25 +245,25 @@ function ReportActions({ reportContent }: { reportContent: string }) {
   };
 
   return (
-    <div className="flex gap-2 sm:gap-3">
+    <div className="flex gap-2">
       <button
-        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-gray-100 hover:bg-gray-200 px-2 sm:px-3 py-1.5 text-xs text-gray-700 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-[11px] sm:text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600"
         onClick={handleCopy}
       >
-        <span>复制报告</span>
+        <span>复制</span>
         {copySuccess && <span className="text-green-600 ml-1">✓ 已复制</span>}
       </button>
       <button
-        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-blue-100 hover:bg-blue-200 px-2 sm:px-3 py-1.5 text-xs text-blue-700 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-[11px] sm:text-xs font-medium bg-blue-100 hover:bg-blue-200 text-blue-700"
         onClick={handleReportRetry}
       >
         <span>重新生成</span>
       </button>
       <button
-        className="flex items-center gap-1 sm:gap-2 rounded-lg bg-red-100 hover:bg-red-200 px-2 sm:px-3 py-1.5 text-xs text-red-700 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-[11px] sm:text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700"
         onClick={handleDelete}
       >
-        <span>删除报告</span>
+        <span>删除</span>
       </button>
     </div>
   );
@@ -287,24 +271,41 @@ function ReportActions({ reportContent }: { reportContent: string }) {
 
 function StepContentView({ step, stepIndex, isLast }: { step: WorkflowStep; stepIndex: number; isLast: boolean }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const getStepDesc = (agent: string) => {
+    const key = (agent ?? '').toLowerCase();
+    if (key.includes('planner')) return '规划任务';
+    if (key.includes('research')) return '信息检索';
+    if (key.includes('browser')) return '浏览器执行';
+    if (key.includes('coordinator')) return '协调执行';
+    if (key.includes('supervisor')) return '策略决策';
+    if (key.includes('writer')) return '结果撰写';
+    if (key.includes('report')) return '结果汇总';
+    return '任务执行';
+  };
   
-  const filteredTasks = step.tasks.filter(
-    (task) =>
-      !(
-        task.type === "thinking" &&
-        !task.payload.text &&
-        !task.payload.reason
-      ),
-  );
+  const { searchBeforePlanning } = getInputConfigSync();
+  const filteredTasks = step.tasks.filter((task) => {
+    if (
+      step.agentName === "researcher" &&
+      !searchBeforePlanning
+    ) {
+      return false;
+    }
+    return !(
+      task.type === "thinking" &&
+      !task.payload.text &&
+      !task.payload.reason
+    );
+  });
 
   return (
-    <div className="mb-4 sm:mb-8">
-      <div id={step.id} className="mb-3 sm:mb-6">
+    <div className="mb-3 sm:mb-4">
+      <div id={step.id} className="mb-2 sm:mb-3">
         <button
-          className="text-sm sm:text-base font-semibold text-gray-800 mb-2 sm:mb-4 flex items-center gap-2 sm:gap-3 hover:text-blue-600 transition-colors w-full text-left"
+          className="text-[11px] sm:text-xs font-semibold text-gray-700 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3 hover:text-blue-600 transition-colors w-full text-left"
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          <span className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold">
+          <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold">
             {stepIndex + 1}
           </span>
           <span className="flex-1 truncate">{getStepName(step)}</span>
@@ -314,19 +315,23 @@ function StepContentView({ step, stepIndex, isLast }: { step: WorkflowStep; step
             <DownOutlined className="text-xs flex-shrink-0" />
           )}
         </button>
+        <div className="pl-7 sm:pl-9 text-[10px] sm:text-xs text-gray-500">{getStepDesc(step.agentName ?? '')}</div>
       </div>
       {isExpanded && (
-        <div className="ml-6 sm:ml-11 space-y-2 sm:space-y-4 max-w-full overflow-hidden">
+        <div className="ml-4 sm:ml-8 space-y-1 sm:space-y-2 max-w-full overflow-hidden">
           {filteredTasks.map((task, taskIndex) =>
             task.type === "thinking" &&
-            step.agentName === "planner" ? (
+              step.agentName === "planner" ? (
               <PlanTaskView key={`${step.id}-${task.id}-${taskIndex}`} task={task} />
             ) : (
               <div key={`${step.id}-${task.id}-${taskIndex}`} className="">
                 {task.type === "thinking" ? (
-                  <div className="bg-gray-50 rounded-lg p-2 sm:p-4 border-l-2 sm:border-l-4 border-gray-300">
+                  <div
+                    className="rounded-md p-2 sm:p-3 border border-gray-200 bg-white"
+                    style={{ contentVisibility: 'auto' as any, containIntrinsicSize: '160px 480px', willChange: 'opacity' }}
+                  >
                     <Markdown
-                      className="text-gray-600 text-xs sm:text-sm"
+                      className="text-gray-700 text-[11px] sm:text-xs"
                     >
                       {task.payload.text}
                     </Markdown>
@@ -340,8 +345,8 @@ function StepContentView({ step, stepIndex, isLast }: { step: WorkflowStep; step
         </div>
       )}
       {!isLast && (
-        <div className="mt-8 mb-8">
-          <hr className="border-gray-200" />
+        <div className="mt-4 mb-4">
+          <hr className="border-gray-200/60" />
         </div>
       )}
     </div>

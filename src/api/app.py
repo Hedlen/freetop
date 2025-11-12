@@ -176,11 +176,23 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
             except asyncio.CancelledError:
                 logger.info("Stream processing cancelled")
                 abort_event.set()
-                raise
+                # Gracefully end stream without raising to avoid chunked errors
+                return
             except Exception as e:
                 logger.error(f"Error in workflow: {e}")
                 abort_event.set()
-                raise
+                # Send a final message to client describing error, then end stream gracefully
+                try:
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({
+                            "message_id": f"error_{task_id}",
+                            "delta": {"content": f"[错误] {str(e)}"}
+                        }, ensure_ascii=False),
+                    }
+                except Exception:
+                    pass
+                return
             finally:
                 # Clean up task tracking
                 if task_id in task_abort_events:

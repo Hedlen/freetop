@@ -28,18 +28,31 @@ export const useStore = create<Store>(() => ({
   },
 }));
 
+function generateUniqueId(prefix: string = "msg") {
+  const used = new Set(useStore.getState().messages.map((m) => m.id));
+  let candidate = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  while (used.has(candidate)) {
+    candidate = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+  return candidate;
+}
+
 export function addMessage(message: Message) {
   useStore.setState((state) => {
+    const msg = { ...message } as Message;
+    if (!msg.id || String(msg.id).trim().length === 0) {
+      msg.id = generateUniqueId(msg.role ?? "msg");
+    }
     // Check if a message with the same ID already exists
-    const existingIndex = state.messages.findIndex((m) => m.id === message.id);
+    const existingIndex = state.messages.findIndex((m) => m.id === msg.id);
     if (existingIndex !== -1) {
       // If message exists, update it instead of adding a duplicate
       const updatedMessages = [...state.messages];
-      updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], ...message };
+      updatedMessages[existingIndex] = { ...updatedMessages[existingIndex], ...msg };
       return { messages: updatedMessages };
     }
     // If no duplicate, add the new message
-    return { messages: [...state.messages, message] };
+    return { messages: [...state.messages, msg] };
   });
   return message;
 }
@@ -82,67 +95,104 @@ export async function sendMessage(
   setResponding(true);
 
   let textMessage: TextMessage | null = null;
-  try {
-    for await (const event of stream) {
-      // 捕获任务ID
+  let rafPending = false;
+  const scheduleTextUpdate = () => {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      if (textMessage) {
+        updateMessage({ id: textMessage.id, content: textMessage.content });
+      }
+      rafPending = false;
+    });
+  };
+
+  const ensureUniqueId = (baseId: string | undefined) => {
+    const used = new Set(useStore.getState().messages.map((m) => m.id));
+    let candidate = String(baseId ?? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+    if (!used.has(candidate)) return candidate;
+    candidate = `${candidate}_${Math.random().toString(36).slice(2, 6)}`;
+    return candidate;
+  };
+
+  const processStream = async (iter: AsyncIterable<ChatEvent & { taskId?: string }>) => {
+    for await (const event of iter) {
       if (event.taskId) {
         useStore.setState({ currentTaskId: event.taskId });
       }
-      
       switch (event.type) {
         case "start_of_agent":
           textMessage = {
-            id: event.data.agent_id,
+            id: ensureUniqueId((event as any).data?.agent_id),
             role: "assistant",
             type: "text",
             content: "",
           };
           addMessage(textMessage);
           break;
-        case "message":
-          if (textMessage) {
-            textMessage.content += event.data.delta.content;
-            updateMessage({
-              id: textMessage.id,
-              content: textMessage.content,
-            });
+        case "message": {
+          const data = (event as any).data || {};
+          const delta = data.delta || {};
+          const piece = (delta.content ?? delta.reasoning_content ?? "");
+          if (!textMessage) {
+            textMessage = {
+              id: ensureUniqueId(data.message_id),
+              role: "assistant",
+              type: "text",
+              content: "",
+            };
+            addMessage(textMessage);
           }
+          textMessage.content += piece;
+          scheduleTextUpdate();
+          break;
+        }
           break;
         case "end_of_agent":
+          if (textMessage) {
+            updateMessage({ id: textMessage.id, content: textMessage.content });
+          }
           textMessage = null;
           break;
-        case "start_of_workflow":
-          console.log("Received start_of_workflow event:", event);
+        case "start_of_workflow": {
           const workflowEngine = new WorkflowEngine();
-          const workflow = workflowEngine.start(event);
+          const workflow = workflowEngine.start(event as any);
           const workflowMessage: WorkflowMessage = {
-            id: event.data.workflow_id,
+            id: (event as any).data.workflow_id,
             role: "assistant",
             type: "workflow",
-            content: { workflow: workflow },
+            content: { workflow },
           };
-          console.log("Created workflow message:", workflowMessage);
           addMessage(workflowMessage);
-          for await (const updatedWorkflow of workflowEngine.run(stream)) {
-            updateMessage({
-              id: workflowMessage.id,
-              content: { workflow: updatedWorkflow },
-            });
+          for await (const updatedWorkflow of workflowEngine.run(iter)) {
+            updateMessage({ id: workflowMessage.id, content: { workflow: updatedWorkflow } });
           }
-          // 不要覆盖整个messages数组，这会导致无限更新循环
-          // _setState({
-          //   messages: workflow.finalState?.messages ?? [],
-          // });
           break;
+        }
         default:
           break;
       }
     }
+  };
+
+  let usedMockFallback = false;
+  try {
+    await processStream(stream);
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {
       return;
     }
-    throw e;
+    // 网络或服务不可用，回退使用 mock 流
+    if (!usedMockFallback) {
+      usedMockFallback = true;
+      try {
+        await processStream(mockChatStream(message));
+      } catch (err) {
+        throw err;
+      }
+    } else {
+      throw e;
+    }
   } finally {
     setResponding(false);
     useStore.setState({ currentTaskId: null });
