@@ -24,6 +24,7 @@ As a Deep Researcher, you can breakdown the major subject into sub-topics and ex
 - Create a step-by-step plan.
 - Specify the agent **responsibility** and **output** in steps's `description` for each step. Include a `note` if necessary.
 - Ensure all mathematical calculations are assigned to `coder`. Use self-reminder methods to prompt yourself.
+- Prefer `coder` for tasks that require writing, debugging, or refactoring code, generating scripts, producing runnable examples, or transforming code. Use `researcher` only when external references are truly needed.
 - Merge consecutive steps assigned to the same agent into a single step.
 - Use the same language as the user to generate the plan.
 
@@ -56,6 +57,7 @@ interface Plan {
 {% elif agent == "coder" %}
 - Always use `coder` for mathematical computations.
 - Always use `coder` to get stock information via `yfinance`.
+- Use `coder` for general programming tasks (scripts, utilities, code samples, refactoring, algorithm implementation).
 {% elif agent == "reporter" %}
 - Always use `reporter` to present your final report. Reporter can only be used once as the last step.
 {% endif %}

@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+import re
 import asyncio
 
 from src.config import TEAM_MEMBER_CONFIGRATIONS, TEAM_MEMBERS
@@ -90,8 +91,58 @@ async def run_agent_workflow(
     workflow_id = str(uuid.uuid4())
 
     team_members = team_members if team_members else TEAM_MEMBERS
+
+    def _should_enable_research(msgs: list) -> bool:
+        """Heuristically decide whether research is needed even when search is enabled.
+
+        Returns True if the query likely requires external information (news, realtime, references),
+        otherwise False for self-contained coding or algorithm tasks.
+        """
+        try:
+            # Get last user text
+            last_text = ""
+            for m in reversed(msgs):
+                role = m.get("role") if isinstance(m, dict) else getattr(m, "role", None)
+                content = m.get("content") if isinstance(m, dict) else getattr(m, "content", None)
+                if role == "user" and isinstance(content, str):
+                    last_text = content.strip()
+                    break
+            if not last_text:
+                return False
+
+            text = last_text.lower()
+
+            # Explicit search intents
+            search_intent_patterns = [
+                r"搜索|查找|检索|查询|参考链接|来源|官网",
+                r"最新|近期|今天|现在|实时|当日|本周|这周|本月",
+                r"新闻|价格|行情|政策|天气|赛事|上映|发布",
+            ]
+            for p in search_intent_patterns:
+                if re.search(p, text):
+                    return True
+
+            # Code-centric intents: prefer coder
+            code_intent_patterns = [
+                r"代码|脚本|函数|类|模块|库|重构|实现|编写|生成|示例|样例|demo",
+                r"python|javascript|typescript|java|c\+\+|c#|go|rust|sql|shell|bash|powershell",
+                r"```",
+            ]
+            for p in code_intent_patterns:
+                if re.search(p, text):
+                    return False
+
+            # Default: no research unless explicitly needed
+            return False
+        except Exception:
+            return False
+
     if not search_before_planning:
         team_members = [m for m in team_members if m != "researcher"]
+    else:
+        # Even if search is enabled, only include researcher when heuristics say it's needed
+        if not _should_enable_research(user_input_messages):
+            team_members = [m for m in team_members if m != "researcher"]
 
     streaming_llm_agents = [*team_members, "planner", "coordinator"]
 

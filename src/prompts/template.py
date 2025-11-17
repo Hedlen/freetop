@@ -41,8 +41,22 @@ def apply_prompt_template(prompt_name: str, state: AgentState) -> list:
         List of messages with the system prompt as the first message
     """
     # Convert state to dict for template rendering
+    # Extract last user question for contextual lead-in in reporter outputs
+    last_user_query = ""
+    try:
+        msgs = state.get("messages", [])
+        for m in reversed(msgs):
+            role = getattr(m, "role", None) if hasattr(m, "role") else (m.get("role") if isinstance(m, dict) else None)
+            content = getattr(m, "content", None) if hasattr(m, "content") else (m.get("content") if isinstance(m, dict) else None)
+            if role == "user" and isinstance(content, str) and content.strip():
+                last_user_query = content.strip()
+                break
+    except Exception:
+        last_user_query = ""
+
     state_vars = {
         "CURRENT_TIME": datetime.now().strftime("%a %b %d %Y %H:%M:%S %z"),
+        "LAST_USER_QUERY": last_user_query,
         **state,
     }
 

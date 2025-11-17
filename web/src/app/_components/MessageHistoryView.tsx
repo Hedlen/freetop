@@ -288,8 +288,10 @@ export function MessageHistoryView({ messages, responding, abortController, clas
             const { scrollTop, scrollHeight, clientHeight } = container;
             const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
             const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-            const enoughTime = now - lastScrollSetTsRef.current > 8;
-            if (distanceToBottom > 0 && enoughTime) {
+            const changed = scrollHeight > (lastScrollHeightRef.current + 8);
+            const enoughTime = now - lastScrollSetTsRef.current > 64;
+            const t = getDynamicThreshold(container, 100);
+            if (enoughTime && (changed || distanceToBottom > t * 0.5) && !isLockedByUser && isNearBottom) {
               container.scrollTop = scrollHeight;
               lastScrollHeightRef.current = scrollHeight;
               lastScrollSetTsRef.current = now;

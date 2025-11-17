@@ -343,8 +343,8 @@ textarea:focus {
   /* 美观的滚动条样式 */
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
-  /* 确保滚动平滑 */
-  scroll-behavior: smooth;
+  /* 程序化滚动使用即时方式，避免流式内容抖动 */
+  scroll-behavior: auto;
   /* 优化滚动性能 */
   will-change: scroll-position;
   transform: translateZ(0);
@@ -377,7 +377,7 @@ textarea:focus {
 
 /* 优化滚动行为，确保中间内容可顺畅浏览 */
 .message-scroll-container {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 /* 防止水平滚动条 */
