@@ -149,7 +149,7 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
                     "data": json.dumps({"task_id": task_id}, ensure_ascii=False),
                 }
                 
-                use_simple = not request.deep_thinking_mode and not request.search_before_planning
+                use_simple = False
                 from src.service.workflow_service import run_simple_chat
                 generator = (
                     run_simple_chat(messages, user_id=user_id)

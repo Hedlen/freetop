@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { sendMessage, useStore } from '~/core/store';
@@ -179,7 +180,8 @@ export function MessageHistoryView({ messages, responding, abortController, clas
       e.preventDefault();
       e.stopPropagation();
       const applyScroll = () => {
-        container.scrollTop += e.deltaY;
+        const factor = isScrollingUp ? 1.8 : 1.3;
+        container.scrollTop += e.deltaY * factor;
         const { scrollTop, scrollHeight, clientHeight } = container;
         const distanceToBottom = scrollHeight - scrollTop - clientHeight;
         const t = getDynamicThreshold(container, 100);
@@ -285,9 +287,9 @@ export function MessageHistoryView({ messages, responding, abortController, clas
           if (container) {
             const { scrollTop, scrollHeight, clientHeight } = container;
             const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-            const changed = scrollHeight > (lastScrollHeightRef.current + 4);
-            const enoughTime = now - lastScrollSetTsRef.current > 32;
-            if (changed && enoughTime) {
+            const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+            const enoughTime = now - lastScrollSetTsRef.current > 8;
+            if (distanceToBottom > 0 && enoughTime) {
               container.scrollTop = scrollHeight;
               lastScrollHeightRef.current = scrollHeight;
               lastScrollSetTsRef.current = now;
@@ -346,7 +348,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
     <div 
       ref={containerRef}
       className={`
-        w-full h-full
+        w-full h-full relative
         ${className ?? ''}
       `}
       style={{
@@ -379,7 +381,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
         
         <div ref={endRef} />
         {isLockedByUser && (
-          <div className="fixed bottom-6 right-6 z-40">
+          <div className="absolute bottom-24 right-6 z-40">
             <button
               onClick={() => {
                 setIsLockedByUser(false);
@@ -387,10 +389,11 @@ export function MessageHistoryView({ messages, responding, abortController, clas
                   endRef.current?.scrollIntoView({ behavior: 'smooth' });
                 });
               }}
-              className="px-3 py-2 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors text-sm"
+              className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-white text-gray-700 border border-gray-200 shadow-md hover:bg-white transition-colors flex items-center justify-center"
               title="跳至最新"
+              aria-label="跳至最新"
             >
-              跳至最新
+              <ChevronDown className="h-5 w-5 text-gray-600" />
             </button>
           </div>
         )}
