@@ -43,11 +43,14 @@ dev = [
 test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "hypothesis>=6.0.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+asyncio_mode = "auto"
 addopts = "-v --cov=src --cov-report=term-missing"
 filterwarnings = [
     "ignore::DeprecationWarning",

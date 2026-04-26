@@ -54,6 +54,7 @@ async def run_agent_workflow(
     abort_event: Optional[asyncio.Event] = None,
     user_id: Optional[int] = None,
     request_headers: Optional[dict] = None,
+    thread_id: Optional[str] = None,
 ):
     """Run the agent workflow to process and respond to user input messages.
 
@@ -85,6 +86,9 @@ async def run_agent_workflow(
 
     if debug:
         enable__logging()
+
+    if thread_id is None:
+        thread_id = str(uuid.uuid4())
 
     logger.info(f"Starting workflow with user input: {user_input_messages}")
 
@@ -183,7 +187,7 @@ async def run_agent_workflow(
                 "user_id": user_id,
             },
             version="v2",
-            config={"recursion_limit": 50},
+            config={"configurable": {"thread_id": thread_id}, "recursion_limit": 50},
         ):
             # Check for abort signal
             if abort_event and abort_event.is_set():
@@ -209,7 +213,24 @@ async def run_agent_workflow(
             )
             run_id = "" if (event.get("run_id") is None) else str(event["run_id"])
 
-            if kind == "on_chain_start" and name in streaming_llm_agents:
+            if kind == "on_chain_start" and name == "parallel_dispatch":
+                ydata = {
+                    "event": "parallel_start",
+                    "data": {
+                        "workflow_id": workflow_id,
+                        "tasks": [t.get("agent", "") for t in (data.get("input") or {}).get("parallel_tasks", [])],
+                    },
+                }
+            elif kind == "on_chain_end" and name == "parallel_merge":
+                results = (data.get("output") or {}).get("parallel_results", [])
+                ydata = {
+                    "event": "parallel_end",
+                    "data": {
+                        "workflow_id": workflow_id,
+                        "results_count": len(results),
+                    },
+                }
+            elif kind == "on_chain_start" and name in streaming_llm_agents:
                 if name == "planner":
                     is_workflow_triggered = True
                     yield {
@@ -253,6 +274,7 @@ async def run_agent_workflow(
                     ydata = {
                         "event": "message",
                         "data": {
+                            "agent_name": node,
                             "message_id": data["chunk"].id,
                             "delta": {
                                 "reasoning_content": (
@@ -272,28 +294,34 @@ async def run_agent_workflow(
                                 continue
                             if len(coordinator_cache) < MAX_CACHE_SIZE:
                                 continue
-                            # Send the cached message
+                            # Send the cached message (non-handoff coordinator response)
                             ydata = {
                                 "event": "message",
                                 "data": {
+                                    "agent_name": node,
                                     "message_id": data["chunk"].id,
                                     "delta": {"content": cached_content},
                                 },
                             }
                         elif not is_handoff_case:
-                            # For other agents, send the message directly
+                            # Cache full, not a handoff: send token directly
                             ydata = {
                                 "event": "message",
                                 "data": {
+                                    "agent_name": node,
                                     "message_id": data["chunk"].id,
                                     "delta": {"content": content},
                                 },
                             }
+                        else:
+                            # is_handoff_case=True: suppress all coordinator tokens
+                            continue
                     else:
                         # For other agents, send the message directly
                         ydata = {
                             "event": "message",
                             "data": {
+                                "agent_name": node,
                                 "message_id": data["chunk"].id,
                                 "delta": {"content": content},
                             },
@@ -324,6 +352,14 @@ async def run_agent_workflow(
             yield ydata
     except asyncio.CancelledError:
         logger.info("Workflow cancelled, terminating browser agent if exists")
+        # Mark thread as interrupted in checkpointer
+        try:
+            await graph.aupdate_state(
+                {"configurable": {"thread_id": thread_id}},
+                {"next": "__interrupted__"},
+            )
+        except Exception as update_err:
+            logger.warning(f"Failed to update graph state on abort: {update_err}")
         if current_browser_tool:
             try:
                 await current_browser_tool.terminate()

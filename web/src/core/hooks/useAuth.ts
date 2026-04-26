@@ -1,18 +1,11 @@
 /**
  * 用户认证相关的React Hook
- * 提供登录状态检查、登录/登出处理等功能
+ * 提供登录状态检查、登录/登出处理、邮箱验证等功能
  */
 
 import { useState, useEffect, useCallback } from 'react';
-
+import { authService, User, AuthResponse } from '@/core/services/authService';
 import { migrateLocalConfigToCloud, getLocalConfig, getCloudConfig } from '../utils/config';
-
-// 模拟用户数据接口
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
 
 // 配置迁移状态
 interface MigrationState {
@@ -20,128 +13,6 @@ interface MigrationState {
   localConfig: any;
   cloudConfig: any;
   completed: boolean;
-}
-
-// 检查认证状态
-async function checkAuthStatus(): Promise<User | null> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const response = await fetch('/api/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.user;
-    } else if (response.status === 401) {
-      const errorData = await response.json();
-      if (errorData.detail?.includes('已过期')) {
-        // Token过期，尝试刷新
-        const refreshed = await refreshToken();
-        if (refreshed) {
-          // 刷新成功，重新获取用户信息
-          return checkAuthStatus();
-        }
-      }
-      // Token无效或刷新失败，清除本地token
-      localStorage.removeItem('auth_token');
-      return null;
-    } else {
-      console.error('Failed to check auth status: HTTP', response.status);
-      return null;
-    }
-  } catch (error) {
-    console.error('Auth status check failed:', error);
-    return null;
-  }
-}
-
-// 刷新Token
-async function refreshToken(): Promise<boolean> {
-  const token = localStorage.getItem('auth_token');
-  if (!token) {
-    return false;
-  }
-
-  try {
-    const response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      localStorage.setItem('auth_token', data.token);
-      console.log('Token refreshed successfully');
-      return true;
-    } else {
-      console.error('Token refresh failed:', response.status);
-      return false;
-    }
-  } catch (error) {
-    console.error('Token refresh error:', error);
-    return false;
-  }
-}
-
-// 用户登录
-async function loginUser(email: string, password: string): Promise<User> {
-  try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.token) {
-        localStorage.setItem('auth_token', data.token);
-        return data.user;
-      } else {
-        throw new Error(data.message ?? 'Login failed');
-      }
-    } else {
-      const errorData = await response.json();
-      throw new Error(errorData.message ?? 'Login failed');
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
-  }
-}
-
-// 用户登出
-async function logoutUser(): Promise<void> {
-  try {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // 调用后端登出API（如果有的话）
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }).catch(() => {
-        // 忽略登出API错误，继续清除本地token
-      });
-    }
-    localStorage.removeItem('auth_token');
-  } catch (error) {
-    console.error('Logout error:', error);
-    // 即使出错也要清除本地token
-    localStorage.removeItem('auth_token');
-  }
 }
 
 export function useAuth() {
@@ -206,9 +77,11 @@ export function useAuth() {
   const checkAuth = useCallback(async () => {
     setLoading(true);
     try {
-      const currentUser = await checkAuthStatus();
+      const isAuthenticated = authService.isAuthenticated();
+      const currentUser = authService.getCurrentUser();
+      
       setUser(currentUser);
-      const newIsLoggedIn = !!currentUser;
+      const newIsLoggedIn = isAuthenticated;
       
       // 如果用户刚登录，检查是否需要配置迁移
       if (currentUser && !isLoggedIn && newIsLoggedIn) {
@@ -227,46 +100,135 @@ export function useAuth() {
   }, [isLoggedIn, checkMigrationNeeded]);
 
   // 登录
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string): Promise<AuthResponse> => {
     setLoading(true);
     try {
-      const user = await loginUser(email, password);
-      setUser(user);
-      setIsLoggedIn(true);
+      const result = await authService.login(username, password);
       
-      // 登录成功后检查配置迁移
-      const migration = await checkMigrationNeeded();
-      setMigrationState(migration);
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsLoggedIn(true);
+        
+        // 登录成功后检查配置迁移
+        const migration = await checkMigrationNeeded();
+        setMigrationState(migration);
+      }
       
-      await checkAuth();
+      return result;
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [checkMigrationNeeded, checkAuth]);
+  }, [checkMigrationNeeded]);
 
-  // 登出
-  const logout = useCallback(async () => {
+  // 注册
+  const register = useCallback(async (username: string, email: string, password: string): Promise<AuthResponse> => {
     setLoading(true);
     try {
-      await logoutUser();
+      const result = await authService.register(username, email, password);
+      return result;
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 邮箱验证
+  const verifyEmail = useCallback(async (email: string, verificationCode: string): Promise<AuthResponse> => {
+    try {
+      const result = await authService.verifyEmail(email, verificationCode);
+      
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsLoggedIn(true);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Email verification failed:', error);
+      throw error;
+    }
+  }, []);
+
+  // 重新发送验证邮件
+  const resendVerificationEmail = useCallback(async (email: string): Promise<AuthResponse> => {
+    try {
+      return await authService.resendVerificationEmail(email);
+    } catch (error) {
+      console.error('Resend verification email failed:', error);
+      throw error;
+    }
+  }, []);
+
+  // 请求密码重置
+  const requestPasswordReset = useCallback(async (email: string): Promise<AuthResponse> => {
+    try {
+      return await authService.requestPasswordReset(email);
+    } catch (error) {
+      console.error('Password reset request failed:', error);
+      throw error;
+    }
+  }, []);
+
+  // 确认密码重置
+  const confirmPasswordReset = useCallback(async (resetToken: string, newPassword: string): Promise<AuthResponse> => {
+    try {
+      return await authService.confirmPasswordReset(resetToken, newPassword);
+    } catch (error) {
+      console.error('Password reset confirmation failed:', error);
+      throw error;
+    }
+  }, []);
+
+  // 登出
+  const logout = useCallback(async (): Promise<void> => {
+    setLoading(true);
+    try {
+      await authService.logout();
       setUser(null);
       setIsLoggedIn(false);
-      
-      await checkAuth();
+      setMigrationState({ needed: false, localConfig: null, cloudConfig: null, completed: false });
     } catch (error) {
       console.error('Logout failed:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  }, [checkAuth]);
+  }, []);
+
+  // 检查订阅状态
+  const hasActiveSubscription = useCallback(async (): Promise<boolean> => {
+    return await authService.hasActiveSubscription();
+  }, []);
+
+  const hasActiveTrial = useCallback(async (): Promise<boolean> => {
+    return await authService.hasActiveTrial();
+  }, []);
+
+  const canAccessService = useCallback(async (): Promise<{ canAccess: boolean; reason: string }> => {
+    return await authService.canAccessService();
+  }, []);
 
   // 初始化检查认证状态
   useEffect(() => {
     void checkAuth();
+  }, [checkAuth]);
+
+  // 监听认证状态变化
+  useEffect(() => {
+    const handleAuthChange = () => {
+      void checkAuth();
+    };
+
+    authService.addAuthListener(handleAuthChange);
+
+    return () => {
+      authService.removeAuthListener(handleAuthChange);
+    };
   }, [checkAuth]);
 
   return {
@@ -278,7 +240,15 @@ export function useAuth() {
     skipMigration,
     refresh: checkAuth,
     login,
+    register,
+    verifyEmail,
+    resendVerificationEmail,
+    requestPasswordReset,
+    confirmPasswordReset,
     logout,
+    hasActiveSubscription,
+    hasActiveTrial,
+    canAccessService,
   };
 }
 
@@ -287,13 +257,24 @@ export function useAuth() {
  */
 export function useIsLoggedIn(): boolean {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const checkStatus = useCallback(async () => {
-    const user = await checkAuthStatus();
-    setIsLoggedIn(!!user);
+  
+  const checkStatus = useCallback(() => {
+    const authenticated = authService.isAuthenticated();
+    setIsLoggedIn(authenticated);
   }, []);
 
   useEffect(() => {
-    void checkStatus();
+    checkStatus();
+    
+    const handleAuthChange = () => {
+      checkStatus();
+    };
+
+    authService.addAuthListener(handleAuthChange);
+
+    return () => {
+      authService.removeAuthListener(handleAuthChange);
+    };
   }, [checkStatus]);
 
   return isLoggedIn;

@@ -7,7 +7,7 @@ on:
     branches: [ '*' ]
 
 jobs:
-  test:
+  backend-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -23,7 +23,41 @@ jobs:
         uv pip install -e ".[dev]"
         uv pip install -e ".[test]"
 
-    - name: Run test cases
+    - name: Run backend test cases
       run: |
         source .venv/bin/activate
-        OPENAI_API_KEY=mock-key DEEPSEEK_API_KEY=mock-key TAVILY_API_KEY=mock-key make test
+        OPENAI_API_KEY=mock-key DEEPSEEK_API_KEY=mock-key TAVILY_API_KEY=mock-key \
+          pytest tests/unit tests/integration tests/property \
+            --cov=src --cov-report=term-missing --cov-fail-under=70 \
+            -q --tb=short
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v3
+      with:
+        version: 10
+
+    - name: Install frontend dependencies
+      run: pnpm install
+      working-directory: web
+
+    - name: Frontend type check
+      run: pnpm tsc --noEmit
+      working-directory: web
+
+    - name: Frontend lint
+      run: pnpm lint
+      working-directory: web
+
+    - name: Frontend unit tests
+      run: pnpm vitest --run
+      working-directory: web

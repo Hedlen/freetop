@@ -32,6 +32,7 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+        db.commit()  # Commit on successful completion
     except Exception as e:
         logger.error(f"Database error: {e}")
         db.rollback()
@@ -54,8 +55,9 @@ def get_db_session() -> Generator[Session, None, None]:
         db.close()
 
 def init_database():
-    """初始化数据库表"""
     from src.models.user import Base
+    import src.models.payment
+    import src.models.subscription
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")

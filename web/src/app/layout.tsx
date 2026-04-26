@@ -1,4 +1,5 @@
 import { GeistSans } from "geist/font/sans";
+import { Toaster } from "sonner";
 import { type Metadata } from "next";
 
 import "~/styles/globals.css";
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="w-full flex min-h-screen bg-sky-gradient relative overflow-x-hidden" suppressHydrationWarning>
         <div className="absolute inset-0 bg-mountain-overlay"></div>
         <div className="relative z-10 w-full">{children}</div>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

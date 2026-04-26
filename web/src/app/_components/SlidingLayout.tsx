@@ -12,13 +12,15 @@ interface SlidingLayoutProps {
   sidePanel?: ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  panelWidth?: string;
 }
 
 export function SlidingLayout({ 
   children, 
   sidePanel, 
   isOpen, 
-  onClose
+  onClose,
+  panelWidth = "min(600px, 80vw)",
 }: SlidingLayoutProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const [isBrowserActive, setIsBrowserActive] = useState(false)
@@ -88,15 +90,15 @@ export function SlidingLayout({
     >
       <div
         className={cn(
-          "ease-in-out will-change-transform",
+          "ease-in-out",
           "no-horizontal-scroll",
-          isRightPanelOpen ? "transform -translate-x-[min(600px,80vw)]" : "transform translate-x-0",
           isResizing ? "transition-none" : "transition-transform duration-500",
-          isResizing && "pointer-events-none"
+          (isRightPanelOpen || isAnimating) && "will-change-transform",
+          (isResizing || isAnimating) && "pointer-events-none"
         )}
         onTransitionEnd={handleTransitionEnd}
         style={{
-          transform: isRightPanelOpen ? `translate3d(-${Math.min(600, window.innerWidth * 0.8)}px, 0, 0)` : 'translate3d(0, 0, 0)'
+          transform: isRightPanelOpen ? `translateX(-${panelWidth})` : 'translateX(0)',
         }}
       >
         {children}
@@ -105,16 +107,17 @@ export function SlidingLayout({
       {(isRightPanelOpen || isAnimating) && (
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-[min(600px,80vw)] bg-white/95 backdrop-blur-md border-l border-gray-200 shadow-2xl z-50",
-            "ease-in-out will-change-transform",
+            "fixed right-0 top-0 h-full bg-white/95 backdrop-blur-md border-l border-gray-200 shadow-2xl z-50",
+            "ease-in-out",
             "no-horizontal-scroll",
             isRightPanelOpen ? "transform translate-x-0" : "transform translate-x-full",
             isResizing ? "transition-none" : "transition-transform duration-500",
-            isResizing && "pointer-events-none"
+            (isRightPanelOpen || isAnimating) && "will-change-transform",
+            (isResizing || isAnimating) && "pointer-events-none"
           )}
           style={{
-            transform: 'translate3d(0, 0, 0)',
-            width: `${Math.min(600, window.innerWidth * 0.8)}px`
+            width: panelWidth,
+            transform: isRightPanelOpen ? 'translateX(0)' : 'translateX(100%)',
           }}
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200">

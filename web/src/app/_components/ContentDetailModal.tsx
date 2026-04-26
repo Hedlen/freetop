@@ -71,44 +71,49 @@ export function ContentDetailModal({
 
   // 重试机制（增强版）
   const handleMediaError = useCallback((mediaType: 'image' | 'video', src: string, error?: Event) => {
-    const currentError = mediaErrors.get(src);
-    const retryCount = currentError ? currentError.retryCount + 1 : 1;
-    
-    // 跟踪错误
-    trackGifError({
-      url: src,
-      error: error?.type ?? 'load_error',
-      retryCount,
-      userAgent: navigator.userAgent,
-    });
-    
-    if (retryCount <= MODAL_CONFIG.MAX_RETRY_COUNT) {
-      const delay = MODAL_CONFIG.RETRY_DELAY_BASE * Math.pow(2, retryCount - 1);
-      
-      retryTimeoutRef.current = setTimeout(() => {
-        // 触发重新加载
-        const element = document.querySelector<HTMLImageElement | HTMLVideoElement>(`[data-src="${src}"]`);
-        if (element) {
-          element.src = src;
-        }
-      }, delay);
-      
-      // 记录重试尝试
-      trackRetryAttempt({ url: src, retryCount });
-    } else {
-      // 记录最终失败
-      setMediaErrors(prev => {
-        const newMap = new Map(prev);
+    setMediaErrors(prev => {
+      const currentError = prev.get(src);
+      const retryCount = currentError ? currentError.retryCount + 1 : 1;
+
+      // 跟踪错误
+      trackGifError({
+        url: src,
+        error: error?.type ?? 'load_error',
+        retryCount,
+        userAgent: navigator.userAgent,
+      });
+
+      const newMap = new Map(prev);
+
+      if (retryCount <= MODAL_CONFIG.MAX_RETRY_COUNT) {
+        const delay = MODAL_CONFIG.RETRY_DELAY_BASE * Math.pow(2, retryCount - 1);
+        retryTimeoutRef.current = setTimeout(() => {
+          const element = document.querySelector<HTMLImageElement | HTMLVideoElement>(`[data-src="${src}"]`);
+          if (element) {
+            element.src = src;
+          }
+        }, delay);
+        trackRetryAttempt({ url: src, retryCount });
+        // Store intermediate retry count so next call can read it
         newMap.set(src, {
           type: mediaType,
-          message: '加载失败，请稍后重试',
+          message: '加载中…',
           retryCount,
           timestamp: Date.now(),
         });
         return newMap;
+      }
+
+      // Max retries exhausted — show error UI
+      newMap.set(src, {
+        type: mediaType,
+        message: '加载失败，请稍后重试',
+        retryCount,
+        timestamp: Date.now(),
       });
-    }
-  }, [mediaErrors]);
+      return newMap;
+    });
+  }, []);
 
   // 预加载图片（支持GIF缓存）
   const preloadImage = useCallback(async (src: string) => {

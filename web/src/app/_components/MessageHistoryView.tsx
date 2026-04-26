@@ -171,32 +171,26 @@ export function MessageHistoryView({ messages, responding, abortController, clas
     const container = scrollElRef.current ?? containerRef.current;
     if (!container) return;
 
-    const canScrollDown = container.scrollTop < container.scrollHeight - container.clientHeight;
-    const canScrollUp = container.scrollTop > 0;
-    const isScrollingDown = e.deltaY > 0;
     const isScrollingUp = e.deltaY < 0;
+    const isScrollingDown = e.deltaY > 0;
 
-    if ((isScrollingDown && canScrollDown) || (isScrollingUp && canScrollUp)) {
-      e.preventDefault();
-      e.stopPropagation();
-      const applyScroll = () => {
-        const factor = isScrollingUp ? 1.8 : 1.3;
-        container.scrollTop += e.deltaY * factor;
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-        const t = getDynamicThreshold(container, 100);
-        setIsNearBottom(distanceToBottom < t);
-        if (distanceToBottom >= t) {
-          setIsLockedByUser(true);
-        }
-      };
-      if (!rafScrollPendingRef.current) {
-        rafScrollPendingRef.current = true;
-        requestAnimationFrame(() => {
-          applyScroll();
-          rafScrollPendingRef.current = false;
-        });
+    const applyScroll = () => {
+      const factor = isScrollingUp ? 1.8 : 1.3;
+      container.scrollTop += e.deltaY * factor;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+      const t = getDynamicThreshold(container, 100);
+      setIsNearBottom(distanceToBottom < t);
+      if (distanceToBottom >= t) {
+        setIsLockedByUser(true);
       }
+    };
+    if (!rafScrollPendingRef.current) {
+      rafScrollPendingRef.current = true;
+      requestAnimationFrame(() => {
+        applyScroll();
+        rafScrollPendingRef.current = false;
+      });
     }
   }, []);
 
@@ -230,7 +224,7 @@ export function MessageHistoryView({ messages, responding, abortController, clas
     // 只在窗口可见且非resize状态时添加事件监听
     if (isWindowVisible && !isResizing) {
       container.addEventListener('scroll', throttledScroll, { passive: true });
-      container.addEventListener('wheel', handleWheelEvent, { passive: false });
+      container.addEventListener('wheel', handleWheelEvent, { passive: true });
     }
     
     return () => {
@@ -355,6 +349,8 @@ export function MessageHistoryView({ messages, responding, abortController, clas
       `}
       style={{
         WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorY: 'contain',
+        touchAction: 'pan-y',
         overflowAnchor: 'none' as any,
       }}
     >
@@ -663,6 +659,10 @@ const MessageView = React.memo(({ message, abortController, messages, isWindowVi
     );
   }
   return null;
+}, (prevProps, nextProps) => {
+  // Only re-render when message.content or message.id changes
+  return prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content;
 });
 
 MessageView.displayName = 'MessageView';

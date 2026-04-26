@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 
@@ -26,3 +26,8 @@ class State(MessagesState):
     full_plan: str
     deep_thinking_mode: bool
     search_before_planning: bool
+    thread_id: str
+    repeat_count: int
+    parallel_tasks: list
+    parallel_results: list
+    user_id: Optional[int]

@@ -73,7 +73,7 @@ export function InputBox({
     [responding, imeStatus, handleSendMessage],
   );
   return (
-    <div className={cn(className)}>
+    <div className={cn(className)} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
 
       <div className="w-full">
         <textarea

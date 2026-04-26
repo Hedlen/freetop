@@ -188,3 +188,64 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.database)
         if "network" in item.name.lower() or "api" in item.name.lower():
             item.add_marker(pytest.mark.network)
+
+
+# ── Fixtures for supervisor/planner tests ──────────────────────────────────────
+
+@pytest.fixture
+def build_mock_state():
+    """
+    返回一个工厂函数，用于构建 supervisor/planner 测试所需的 State-like dict。
+
+    用法::
+
+        def test_something(build_mock_state):
+            state = build_mock_state(next_agent="researcher", repeat_count=0)
+    """
+    def _factory(
+        next_agent: str = "researcher",
+        repeat_count: int = 0,
+        team_members: list | None = None,
+    ) -> dict:
+        if team_members is None:
+            team_members = ["researcher", "coder", "browser", "reporter"]
+        return {
+            "messages": [],
+            "next": next_agent,
+            "repeat_count": repeat_count,
+            "team_members": team_members,
+            "deep_thinking_mode": False,
+            "search_before_planning": False,
+            "plan": None,
+            "observations": [],
+        }
+
+    return _factory
+
+
+@pytest.fixture
+def mock_llm_factory():
+    """
+    返回一个可配置返回值的 mock LLM 工厂函数。
+
+    用法::
+
+        def test_something(mock_llm_factory):
+            llm = mock_llm_factory(response="Hello")
+            result = llm.invoke("prompt")
+            assert result.content == "Hello"
+    """
+    from unittest.mock import MagicMock
+
+    def _factory(response: str = "", tool_calls: list | None = None):
+        llm = MagicMock()
+        ai_message = MagicMock()
+        ai_message.content = response
+        ai_message.tool_calls = tool_calls or []
+        llm.invoke.return_value = ai_message
+        llm.ainvoke.return_value = ai_message
+        # 支持链式调用 llm | parser
+        llm.__or__ = lambda self, other: self
+        return llm
+
+    return _factory

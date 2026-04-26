@@ -18,7 +18,18 @@ import { ResultSidePanel } from "../_components/ResultSidePanel";
 import { SessionHistoryModal } from "../_components/SessionHistoryModal";
 import { SlidingLayout } from "../_components/SlidingLayout";
 import { sidePanelEventManager } from "../_components/ToolCallView";
+import { PricingCard } from "./_components/PricingCard";
 import { useInputConfigValue } from "~/core/hooks/useInputConfig";
+import { useAuth } from "@/core/hooks/useAuth";
+import { 
+  subscriptionService,
+  type SubscriptionPlan,
+  type SubscriptionStatus,
+  type TrialStatus
+} from "~/core/services/subscriptionService";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { CheckIcon, StarIcon, ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 
 export default function HomePage() {
   const inputConfig = useInputConfigValue();
@@ -31,54 +42,17 @@ export default function HomePage() {
   const [isClient, setIsClient] = useState(false);
   const [showSessionHistory, setShowSessionHistory] = useState(false);
   const [sessionHistory, setSessionHistory] = useState<(Message[] | { messages: Message[]; createdAt: number })[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const { user, isLoggedIn } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const router = useRouter();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   // 确保客户端渲染
   useEffect(() => {
     setIsClient(true);
-    
-    // 检查用户登录状态
-    const checkLoginStatus = () => {
-      const token = localStorage.getItem('auth_token');
-      const userInfo = localStorage.getItem('user_info');
-      
-      if (token && userInfo) {
-        try {
-          const parsedUser = JSON.parse(userInfo);
-          setUser(parsedUser);
-        } catch (error) {
-          console.error('Failed to parse user info:', error);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_info');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    };
-    
-    checkLoginStatus();
-    
-    // 监听storage变化，当其他标签页登录时同步状态
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_token' || e.key === 'user_info') {
-        checkLoginStatus();
-      }
-    };
-    
-    // 监听自定义事件，用于同一页面内的状态同步
-    const handleLoginStateChange = () => {
-      checkLoginStatus();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('loginStateChanged', handleLoginStateChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('loginStateChanged', handleLoginStateChange);
-    };
 
     // 加载历史记录
     const storedHistory = localStorage.getItem('freetop_session_history');
@@ -158,6 +132,52 @@ export default function HomePage() {
     });
     return unsubscribe;
   }, []);
+
+  const loadSubscriptionData = async () => {
+    if (!isLoggedIn) return;
+    
+    try {
+      setSubscriptionLoading(true);
+      const [plansData, subscriptionData, trialData] = await Promise.all([
+        subscriptionService.getSubscriptionPlans(),
+        subscriptionService.getSubscriptionStatus(),
+        subscriptionService.getTrialStatus()
+      ]);
+      
+      setPlans(plansData);
+      setSubscriptionStatus(subscriptionData);
+      setTrialStatus(trialData);
+    } catch (error: any) {
+      console.error('加载订阅数据失败:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubscriptionData();
+  }, [isLoggedIn]);
+
+  const handlePlanSelect = async (plan: SubscriptionPlan) => {
+    if (!user) {
+      toast.error('请先登录');
+      router.push('/login');
+      return;
+    }
+
+    if (plan.price === 0) {
+      try {
+        await subscriptionService.createTrial();
+        toast.success('免费试用已激活！');
+        loadSubscriptionData();
+      } catch (error) {
+        toast.error('激活试用失败，请重试');
+      }
+      return;
+    }
+
+    router.push('/subscription');
+  };
 
   const handleSendMessage = useCallback(
     async (
@@ -285,10 +305,10 @@ export default function HomePage() {
                         <div className="text-sm font-medium text-gray-700 mb-2">常用问题</div>
                         <div className="flex flex-col gap-2">
                           {[
-                            "帮我总结这段文本",
-                            "生成一个三天的上海旅行计划",
-                            "搜索并整理近期关于AI的行业新闻",
-                            "帮我优化这段React代码性能",
+                            "成都今天的天气怎么样？",
+                            "制定从成都到上海为期三天的旅行计划，坐飞机过去",
+                            "搜索并整理近期关于AI的行业热点新闻",
+                            "帮我写一个对当前文件夹下所有文件重命名的python代码",
                           ].map((q) => (
                             <button
                               key={q}
@@ -317,7 +337,7 @@ export default function HomePage() {
           <div className="flex-shrink-0 p-2 sm:p-3 bg-[#faf9f6]/80 backdrop-blur-md border-t border-gray-200/50">
             <div className="mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-2 sm:px-4 md:px-6 lg:px-8">
               <div className="relative">
-                {user ? (
+                {isLoggedIn && user ? (
                   <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:shadow-3xl transition-all duration-300 hover:bg-white/15">
                     <InputBox
                       onSend={handleSendMessage}
@@ -367,22 +387,8 @@ export default function HomePage() {
         <LoginModal
           isOpen={showLoginModal}
           onClose={() => setShowLoginModal(false)}
-          onLoginSuccess={(userData) => {
-            setUser(userData);
+          onLoginSuccess={() => {
             setShowLoginModal(false);
-            // 强制重新检查登录状态
-            setTimeout(() => {
-              const token = localStorage.getItem('auth_token');
-              const userInfo = localStorage.getItem('user_info');
-              if (token && userInfo) {
-                try {
-                  const parsedUser = JSON.parse(userInfo);
-                  setUser(parsedUser);
-                } catch (error) {
-                  console.error('Failed to parse user info after login:', error);
-                }
-              }
-            }, 100);
           }}
         />
       )}

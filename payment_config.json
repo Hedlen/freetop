@@ -1,0 +1,52 @@
+{
+  "wechat": {
+    "enabled": true,
+    "sandbox": true,
+    "mch_id": "your_wechat_mch_id",
+    "app_id": "your_wechat_app_id", 
+    "api_key": "your_wechat_api_key",
+    "cert_path": "certs/wechat/apiclient_cert.pem",
+    "key_path": "certs/wechat/apiclient_key.pem",
+    "notify_url": "https://your-domain.com/api/payments/webhooks/wechat",
+    "refund_notify_url": "https://your-domain.com/api/payments/webhooks/wechat/refund",
+    "api_base": "https://api.mch.weixin.qq.com",
+    "sandbox_base": "https://api.mch.weixin.qq.com/sandboxnew",
+    "sign_type": "HMAC-SHA256",
+    "timeout": 30
+  },
+  "alipay": {
+    "enabled": true,
+    "sandbox": true,
+    "app_id": "your_alipay_app_id",
+    "private_key_path": "certs/alipay/app_private_key.pem",
+    "public_key_path": "certs/alipay/alipay_public_key.pem",
+    "alipay_public_key_path": "certs/alipay/alipay_public_key.pem",
+    "notify_url": "https://your-domain.com/api/payments/webhooks/alipay",
+    "return_url": "https://your-domain.com/payment/success",
+    "api_base": "https://openapi.alipay.com/gateway.do",
+    "sandbox_base": "https://openapi.alipaydev.com/gateway.do",
+    "sign_type": "RSA2",
+    "charset": "utf-8",
+    "format": "JSON",
+    "version": "1.0",
+    "timeout": 30
+  },
+  "common": {
+    "default_currency": "CNY",
+    "default_region": "CN",
+    "max_refund_amount": 100000,
+    "min_payment_amount": 1,
+    "max_payment_amount": 1000000,
+    "order_expire_minutes": 30,
+    "query_interval_seconds": 5,
+    "max_query_attempts": 12,
+    "webhook_timeout_seconds": 30,
+    "idempotency_key_expire_hours": 24
+  },
+  "security": {
+    "encrypt_key": "your_encrypt_key_for_sensitive_data",
+    "webhook_secret": "your_webhook_secret_for_signature_verification",
+    "rate_limit_per_minute": 60,
+    "max_concurrent_requests": 100
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/core/hooks/useAuth';
 
 import { cn } from '~/core/utils';
 
@@ -12,49 +13,33 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginModalProps) {
+  const { login, register } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setInfo('');
 
     try {
       if (isLoginMode) {
-        // 登录逻辑
+        // 登录逻辑 - 基础验证
         if (!username || !password) {
           setError('请填写用户名和密码');
           return;
         }
         
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username,
-            password,
-          }),
-        });
+        const result = await login(username, password);
         
-        const result = await response.json();
-        
-        if (result.success) {
-          // 保存token到localStorage
-          localStorage.setItem('auth_token', result.token);
-          localStorage.setItem('user_info', JSON.stringify(result.user));
-          
-          // 触发自定义事件，通知所有组件更新登录状态
-          window.dispatchEvent(new CustomEvent('loginStateChanged'));
-          
-          // 调用父组件的登录回调
+        if (result.success && result.user) {
           onLogin?.(username, password);
           onLoginSuccess?.(result.user);
           onClose();
@@ -62,7 +47,7 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           setError(result.message ?? '登录失败');
         }
       } else {
-        // 注册逻辑
+        // 注册逻辑 - 增强验证
         if (!username || !password || !email) {
           setError('请填写所有必填字段');
           return;
@@ -73,195 +58,190 @@ export function LoginModal({ isOpen, onClose, onLogin, onLoginSuccess }: LoginMo
           return;
         }
         
-        if (password.length < 6) {
-          setError('密码长度至少6位');
+        // 密码强度验证
+        if (password.length < 8) {
+          setError('密码长度至少为8位');
           return;
         }
         
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username,
-            email,
-            password,
-          }),
-        });
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+          setError('密码必须包含大小写字母和数字');
+          return;
+        }
         
-        const result = await response.json();
+        // 邮箱格式验证
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          setError('请输入有效的邮箱地址');
+          return;
+        }
         
+        // 用户名验证
+        if (username.length < 3) {
+          setError('用户名长度至少为3位');
+          return;
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+          setError('用户名只能包含字母、数字和下划线');
+          return;
+        }
+        
+        const result = await register(username, email, password);
         if (result.success) {
-          // 注册成功，自动登录
-          localStorage.setItem('auth_token', result.token);
-          localStorage.setItem('user_info', JSON.stringify(result.user));
-          
-          // 触发自定义事件，通知所有组件更新登录状态
-          window.dispatchEvent(new CustomEvent('loginStateChanged'));
-          
-          // 调用父组件的登录回调
-          onLogin?.(username, password);
-          onLoginSuccess?.(result.user);
-          onClose();
+          if ((result as any).email_verification_required) {
+            setInfo(result.message || '注册成功，请先完成邮箱验证再登录');
+            setIsLoginMode(true);
+          } else if (result.user) {
+            onLoginSuccess?.(result.user);
+            onClose();
+          } else {
+            setInfo('注册成功，请登录');
+            setIsLoginMode(true);
+          }
         } else {
           setError(result.message ?? '注册失败');
         }
       }
-    } catch {
-      setError('网络错误，请重试');
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setError(isLoginMode ? '登录失败，请检查网络连接' : '注册失败，请检查网络连接');
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setUsername('');
-    setPassword('');
-    setConfirmPassword('');
-    setEmail('');
-    setError('');
-  };
-
   const switchMode = () => {
     setIsLoginMode(!isLoginMode);
-    resetForm();
+    setError('');
+    setInfo('');
+    // 清空表单
+    if (!isLoginMode) {
+      setEmail('');
+      setConfirmPassword('');
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className={`modal-overlay ${isOpen ? 'opacity-100' : 'opacity-0'} p-2 sm:p-4`}>
-      {/* 背景遮罩 */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* 模态框内容 */}
-      <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl z-10">
-        {/* 头部 */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20">
-          <h2 className="text-lg sm:text-xl font-semibold text-white">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">
             {isLoginMode ? '登录' : '注册'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
           >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        
-        {/* 表单内容 */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
-          <div className="space-y-4">
-            {/* 用户名 */}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              用户名
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="请输入用户名"
+              required
+            />
+          </div>
+
+          {!isLoginMode && (
             <div>
-              <label className="block text-white/80 text-sm font-medium mb-2">
-                用户名
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                邮箱地址
               </label>
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all duration-200"
-                placeholder="请输入用户名"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                placeholder="请输入邮箱地址"
                 required
               />
             </div>
-            
-            {/* 邮箱（仅注册时显示） */}
-            {!isLoginMode && (
-              <div>
-                <label className="block text-white/80 text-sm font-medium mb-2">
-                  邮箱
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all duration-200"
-                  placeholder="请输入邮箱"
-                  required
-                />
-              </div>
-            )}
-            
-            {/* 密码 */}
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              密码
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="请输入密码"
+              required
+            />
+          </div>
+
+          {!isLoginMode && (
             <div>
-              <label className="block text-white/80 text-sm font-medium mb-2">
-                密码
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                确认密码
               </label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all duration-200"
-                placeholder="请输入密码"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                placeholder="请再次输入密码"
                 required
               />
             </div>
-            
-            {/* 确认密码（仅注册时显示） */}
-            {!isLoginMode && (
-              <div>
-                <label className="block text-white/80 text-sm font-medium mb-2">
-                  确认密码
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all duration-200"
-                  placeholder="请再次输入密码"
-                  required
-                />
-              </div>
-            )}
-            
-            {/* 错误信息 */}
-            {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                <p className="text-red-200 text-sm">{error}</p>
-              </div>
-            )}
+          )}
+
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
           </div>
-          
-          {/* 按钮组 */}
-          <div className="mt-6 space-y-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className={cn(
-                "w-full py-3 px-4 rounded-lg font-medium transition-all duration-200",
-                loading
-                  ? "bg-gray-500/50 text-gray-300 cursor-not-allowed"
-                  : "bg-blue-500/80 hover:bg-blue-600/80 text-white shadow-lg hover:shadow-blue-500/25"
-              )}
-            >
-              {loading ? '处理中...' : (isLoginMode ? '登录' : '注册')}
-            </button>
-            
-            <button
-              type="button"
-              onClick={switchMode}
-              className="w-full py-2 px-4 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-white/20"
-            >
-              {isLoginMode ? '没有账号？立即注册' : '已有账号？立即登录'}
-            </button>
+        )}
+        {info && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            {info}
           </div>
+        )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                {isLoginMode ? '登录中...' : '注册中...'}
+              </div>
+            ) : (
+              isLoginMode ? '登录' : '注册'
+            )}
+          </button>
         </form>
-        
-        {/* 演示提示 */}
-        <div className="px-6 pb-6">
-          <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
-            <p className="text-yellow-200 text-xs text-center">
-              演示版本：任意用户名和密码都可以登录
-            </p>
-          </div>
+
+        {/* Toggle */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            {isLoginMode ? '还没有账户？' : '已经有账户？'}
+            <button
+              onClick={switchMode}
+              className="ml-1 text-blue-600 hover:text-blue-500 font-medium transition-colors"
+            >
+              {isLoginMode ? '立即注册' : '立即登录'}
+            </button>
+          </p>
         </div>
       </div>
     </div>

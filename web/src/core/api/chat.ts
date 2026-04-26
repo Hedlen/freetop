@@ -80,7 +80,8 @@ async function refreshToken(): Promise<boolean> {
 export async function abortAllUserTasks(): Promise<{ status: string; message: string; aborted_tasks?: string[] }> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   if (!token) {
-    throw new Error('No authentication token found');
+    console.log('No authentication token found, skipping abort user tasks');
+    return { status: 'success', message: 'No authenticated user, no tasks to abort' };
   }
 
   try {
@@ -106,15 +107,22 @@ export async function abortAllUserTasks(): Promise<{ status: string; message: st
       }
       // Token无效或刷新失败
       localStorage.removeItem('auth_token');
-      throw new Error('Authentication failed. Please login again.');
+      console.log('Authentication failed, skipping abort user tasks');
+      return { status: 'success', message: 'Authentication failed, no tasks to abort' };
     } else {
-      throw new Error(`Failed to abort user tasks: ${response.status}`);
+      // 其他错误，记录但不抛出异常
+      console.warn(`Failed to abort user tasks: ${response.status}`);
+      return { status: 'error', message: `Failed to abort user tasks: ${response.status}` };
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('Authentication failed')) {
-      throw error;
+      // 网络或其他错误，记录但不抛出异常
+      console.warn('Failed to abort user tasks:', error);
+      return { status: 'error', message: `Failed to abort user tasks: ${String(error)}` };
     }
-    throw new Error(`Failed to abort user tasks: ${String(error)}`);
+    // 网络或其他错误，记录但不抛出异常
+    console.warn('Failed to abort user tasks:', error);
+    return { status: 'error', message: `Failed to abort user tasks: ${String(error)}` };
   }
 }
 

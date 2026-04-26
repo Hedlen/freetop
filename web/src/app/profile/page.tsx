@@ -1,9 +1,10 @@
 'use client';
 
-import { ArrowLeftIcon, CameraIcon, EnvelopeIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CameraIcon, EnvelopeIcon, UserIcon, CreditCardIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { getUserSubscription, UserSubscription } from '@/core/api/subscription';
 
 interface User {
   id: number;
@@ -52,6 +53,8 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   useEffect(() => {
     // 检查用户登录状态
@@ -74,6 +77,45 @@ export default function ProfilePage() {
       router.push('/chat');
     }
   }, [router]);
+
+  // 获取用户订阅信息
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const subscriptionData = await getUserSubscription();
+        setSubscription(subscriptionData);
+      } catch (error) {
+        console.error('获取订阅信息失败:', error);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getSubscriptionStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return { text: '活跃', color: 'bg-green-100 text-green-800' };
+      case 'inactive':
+        return { text: '未激活', color: 'bg-gray-100 text-gray-800' };
+      case 'cancelled':
+        return { text: '已取消', color: 'bg-red-100 text-red-800' };
+      case 'expired':
+        return { text: '已过期', color: 'bg-orange-100 text-orange-800' };
+      default:
+        return { text: '未知', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -144,14 +186,6 @@ export default function ProfilePage() {
     }
     setIsEditing(false);
     setMessage('');
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   if (!user) {
@@ -313,6 +347,84 @@ export default function ProfilePage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="请输入头像图片链接（可选）"
                   />
+                </div>
+              )}
+            </div>
+
+            {/* 订阅信息 */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">订阅信息</h3>
+                <button
+                  onClick={() => router.push('/subscription')}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                >
+                  管理订阅
+                </button>
+              </div>
+
+              {subscriptionLoading ? (
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="text-gray-600">加载订阅信息中...</span>
+                </div>
+              ) : subscription ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <CreditCardIcon className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">{subscription.plan.name}</p>
+                        <p className="text-sm text-gray-600">{subscription.plan.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        getSubscriptionStatusBadge(subscription.status).color
+                      }`}>
+                        {getSubscriptionStatusBadge(subscription.status).text}
+                      </span>
+                      <p className="text-sm text-gray-600 mt-1">
+                        ¥{subscription.plan.price}/{subscription.plan.period === 'monthly' ? '月' : '年'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <CalendarIcon className="w-4 h-4" />
+                      <span>开始时间: {formatDate(subscription.start_date)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <CalendarIcon className="w-4 h-4" />
+                      <span>结束时间: {formatDate(subscription.end_date)}</span>
+                    </div>
+                  </div>
+
+                  {subscription.plan.features && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">包含功能</h4>
+                      <ul className="space-y-1">
+                        {subscription.plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-center space-x-2 text-sm text-gray-600">
+                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <CreditCardIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 mb-3">您还没有订阅任何计划</p>
+                  <button
+                    onClick={() => router.push('/subscription')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    选择订阅计划
+                  </button>
                 </div>
               )}
             </div>

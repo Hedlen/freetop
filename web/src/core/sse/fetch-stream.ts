@@ -28,6 +28,10 @@ export async function* fetchStream<T extends StreamEvent>(
   
   try {
     while (true) {
+      // Check if signal is already aborted before reading
+      if (init.signal?.aborted) {
+        break;
+      }
       const { done, value } = await reader.read();
       if (done) {
         break;

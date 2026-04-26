@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useAuth } from '@/core/hooks/useAuth';
 
 import { LoginModal } from './LoginModal';
 import { UserDropdown } from './UserDropdown';
@@ -14,74 +15,9 @@ interface User {
 }
 
 export function AppHeader() {
-  const [user, setUser] = useState<User | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    // 检查本地存储中的用户信息
-    const checkLoginStatus = () => {
-      const token = localStorage.getItem('auth_token');
-      const userInfo = localStorage.getItem('user_info');
-      
-      if (token && userInfo) {
-        try {
-          const parsedUser = JSON.parse(userInfo);
-          setUser(parsedUser);
-        } catch (error) {
-          console.error('Failed to parse user info:', error);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_info');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    };
-    
-    checkLoginStatus();
-    
-    // 监听storage变化，确保与其他组件状态同步
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_token' || e.key === 'user_info') {
-        checkLoginStatus();
-      }
-    };
-    
-    // 监听自定义事件，用于同一页面内的状态同步
-    const handleLoginStateChange = () => {
-      checkLoginStatus();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('loginStateChanged', handleLoginStateChange);
-    
-    return () => {
-       window.removeEventListener('storage', handleStorageChange);
-       window.removeEventListener('loginStateChanged', handleLoginStateChange);
-     };
-   }, []);
-
-  const handleLogin = (_username: string, _password: string) => {
-    // 登录成功后，用户信息已在LoginModal中保存到localStorage
-    // 这里重新读取用户信息
-    const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
-      try {
-        const parsedUser = JSON.parse(userInfo);
-        setUser(parsedUser);
-        return true;
-      } catch (error) {
-        console.error('Failed to parse user info:', error);
-        return false;
-      }
-    }
-    return false;
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-  };
+  const { user, isLoggedIn, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
     <>
@@ -94,6 +30,12 @@ export function AppHeader() {
         </h1>
         
         <div className="flex items-center space-x-4">
+          <button
+            onClick={() => router.push('/subscription')}
+            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+          >
+            订阅
+          </button>
           <a
             href="https://github.com/Hedlen/freetop"
             target="_blank"
@@ -111,8 +53,8 @@ export function AppHeader() {
             </svg>
           </a>
           
-          {user ? (
-            <UserDropdown user={user} onLogout={handleLogout} />
+          {isLoggedIn && user ? (
+            <UserDropdown user={user as any} onLogout={logout} />
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
@@ -125,14 +67,10 @@ export function AppHeader() {
       </header>
       
       <LoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-          onLogin={handleLogin}
-          onLoginSuccess={(userData) => {
-            setUser(userData);
-            setShowLoginModal(false);
-          }}
-        />
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => setShowLoginModal(false)}
+      />
     </>
   );
 }

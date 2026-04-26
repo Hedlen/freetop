@@ -20,8 +20,13 @@ from src.graph import build_graph
 from src.config import TEAM_MEMBERS, TEAM_MEMBER_CONFIGRATIONS, BROWSER_HISTORY_DIR
 from src.service.workflow_service import run_agent_workflow
 from src.services.user_service import UserService
-from src.database.connection import init_database
+from src.middleware.auth_middleware import AuthMiddleware
+from src.database.connection import init_database, get_db
 from src.api.proxy_test import router as proxy_router
+from src.routers.payments import router as payments_router
+from src.routers.auth import router as auth_router
+from src.routers.subscription import router as subscription_router
+from src.models.user import User
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -42,8 +47,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Include proxy test router
+# Include routers
 app.include_router(proxy_router)
+app.include_router(payments_router)
+app.include_router(auth_router)
+app.include_router(subscription_router)
 
 # Create the graph
 graph = build_graph()
@@ -75,6 +83,7 @@ class ChatRequest(BaseModel):
         False, description="Whether to search before planning"
     )
     team_members: Optional[list] = Field(None, description="enabled team members")
+    thread_id: Optional[str] = Field(None, description="Conversation thread ID for state persistence")
 
 
 class UserRegisterRequest(BaseModel):
@@ -108,6 +117,7 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
         The streamed response
     """
     import uuid
+    from src.services.subscription_service import SubscriptionService
     
     # Get user_id from authorization token first
     user_id = None
@@ -118,6 +128,47 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
                 user_id = payload.get("user_id")
         except Exception as e:
             logger.warning(f"Failed to get user_id from token: {e}")
+    
+    # Check subscription/trial access for authenticated users
+    current_user = None
+    is_authenticated = False
+    
+    if user_id:
+        try:
+            # Get full user info for subscription checking
+            db = next(get_db())
+            try:
+                current_user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+                if current_user:
+                    is_authenticated = True
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Failed to get user info: {e}")
+    
+    if is_authenticated and current_user:
+        try:
+            # Check if user can access the service
+            can_access, reason = SubscriptionService.can_user_access_service(current_user.id)
+            if not can_access:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"服务访问被拒绝: {reason}. 请先订阅或激活试用。"
+                )
+            
+            # If trial user, increment usage
+            if SubscriptionService.has_active_trial(current_user.id):
+                success = SubscriptionService.increment_trial_usage(current_user.id)
+                if not success:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="试用次数已用完，请订阅以继续使用"
+                    )
+                    
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Subscription check error: {e}")
     
     # Generate unique task ID for this request
     task_id = str(uuid.uuid4())
@@ -163,6 +214,7 @@ async def chat_endpoint(request: ChatRequest, req: Request, authorization: str =
                         abort_event=abort_event,
                         user_id=user_id,
                         request_headers=dict(req.headers),
+                        thread_id=request.thread_id,
                     )
                 )
                 async for event in generator:
@@ -366,7 +418,7 @@ async def abort_user_tasks(request: Request):
 
 
 @app.post("/api/auth/register", response_model=UserResponse)
-async def register_user(request: UserRegisterRequest):
+async def register_user(request: UserRegisterRequest, req: Request):
     """
     用户注册
     """
@@ -376,6 +428,32 @@ async def register_user(request: UserRegisterRequest):
             email=request.email,
             password=request.password
         )
+        return UserResponse(**result)
+    except Exception as e:
+        logger.error(f"Error registering user: {e}")
+        raise HTTPException(status_code=500, detail="注册失败")
+
+
+# 备用注册端点，避免路由冲突导致的装饰器解析问题
+@app.post("/api/auth/register2", response_model=UserResponse)
+async def register_user2(request: UserRegisterRequest, req: Request):
+    try:
+        result = UserService.create_user(
+            username=request.username,
+            email=request.email,
+            password=request.password,
+            require_email_verification=False
+        )
+        if result.get("success"):
+            user = result.get("user") or {}
+            access_token = AuthMiddleware.generate_token(user.get("id"), user.get("username"), "access")
+            refresh_token = AuthMiddleware.generate_token(user.get("id"), user.get("username"), "refresh")
+            return UserResponse(
+                success=True,
+                message="注册成功",
+                user=user,
+                token=access_token
+            )
         return UserResponse(**result)
     except Exception as e:
         logger.error(f"Error registering user: {e}")

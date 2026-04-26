@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
 import { type ChatEvent, chatStream, abortTask } from "../api";
 import { chatStream as mockChatStream } from "../api/mock";
@@ -7,7 +8,6 @@ import {
   type Message,
   type TextMessage
 } from "../messaging";
-import { clone } from "../utils";
 import { WorkflowEngine } from "../workflow";
 
 interface Store {
@@ -19,14 +19,16 @@ interface Store {
   };
 }
 
-export const useStore = create<Store>(() => ({
-  messages: [],
-  responding: false,
-  currentTaskId: null,
-  state: {
+export const useStore = create<Store>()(
+  subscribeWithSelector(() => ({
     messages: [],
-  },
-}));
+    responding: false,
+    currentTaskId: null,
+    state: {
+      messages: [],
+    },
+  }))
+);
 
 function generateUniqueId(prefix: string = "msg") {
   const used = new Set(useStore.getState().messages.map((m) => m.id));
@@ -63,10 +65,10 @@ export function updateMessage(message: Partial<Message> & { id: string }) {
     if (index === -1) {
       return state;
     }
-    const newMessage = clone({
+    const newMessage = {
       ...state.messages[index],
       ...message,
-    } as Message);
+    } as Message;
     return {
       messages: [
         ...state.messages.slice(0, index),

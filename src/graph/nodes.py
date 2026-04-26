@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, BaseMessage
 
 import json_repair
 from langchain_core.messages import HumanMessage
-from langgraph.types import Command
+from langgraph.types import Command, Send
 
 from src.agents import research_agent, coder_agent, browser_agent
 from src.llms.llm import get_llm_by_type
@@ -121,6 +121,14 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Supervisor response: {response}")
 
+    # 校验 LLM 返回的 agent 名称是否合法
+    valid_options = state.get("TEAM_MEMBERS", TEAM_MEMBERS) + ["FINISH"]
+    if goto not in valid_options:
+        raise ValueError(
+            f"Supervisor returned invalid agent name '{goto}'. "
+            f"Valid options are: {valid_options}"
+        )
+
     # 防止在同一代理上反复循环：基于上一次的 next 以及重复计数进行限流
     prev_next = state.get("next")
     repeat_count = state.get("repeat_count", 0)
@@ -129,23 +137,23 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
     else:
         repeat_count = 0
 
-    # 当同一代理连续两次以上被选中时，尝试回退到 planner 做一次重新规划；
-    # 若仍然无法收敛（连续三次），则结束本轮，避免“Go to ...”重复。
+    # 当同一代理连续被选中时，尝试回退到 planner 做一次重新规划；
+    # 若仍然无法收敛（repeat_count >= 2），则结束本轮，避免无限循环。
     if goto != "FINISH" and prev_next == goto:
         if repeat_count == 1:
             logger.info(f"Detected repeated delegation to {goto}, rerouting to planner for replanning")
-            goto = "planner" if "planner" in TEAM_MEMBERS else goto
+            goto = "planner"
         elif repeat_count >= 2:
-            logger.info(f"Repeated delegation persists, terminating workflow to avoid loops")
+            logger.info(f"Repeated delegation persists (repeat_count={repeat_count}), terminating workflow to avoid loops")
             goto = "__end__"
 
     if goto == "FINISH":
-        goto = "__end__"
-        logger.info("Workflow completed")
-    else:
-        logger.info(f"Supervisor delegating to: {goto}")
+        logger.info(f"Workflow completed, goto=__end__, repeat_count={repeat_count}")
+        return Command(goto="__end__", update={"next": "__end__", "repeat_count": repeat_count})
 
+    logger.info(f"Supervisor routing decision: goto={goto}, repeat_count={repeat_count}")
     return Command(goto=goto, update={"next": goto, "repeat_count": repeat_count})
+
 
 
 def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
@@ -197,6 +205,40 @@ def planner_node(state: State) -> Command[Literal["supervisor", "__end__"]]:
             "full_plan": full_response,
         },
         goto=goto,
+    )
+
+
+def parallel_dispatch_node(state: State):
+    """Dispatch parallel tasks to agent nodes using LangGraph Send API."""
+    tasks = state.get("parallel_tasks", [])
+    if not tasks:
+        logger.info("No parallel tasks found, routing to supervisor")
+        return Command(goto="supervisor")
+    logger.info(f"Dispatching {len(tasks)} parallel tasks")
+    return [Send(task["agent"], {**state, "current_task": task}) for task in tasks]
+
+
+def parallel_merge_node(state: State) -> Command[Literal["supervisor"]]:
+    """Merge results from all parallel agent tasks into a single HumanMessage."""
+    parallel_results = state.get("parallel_results", [])
+    logger.info(f"Merging {len(parallel_results)} parallel task results")
+
+    segments = []
+    for r in parallel_results:
+        try:
+            agent_name = r["agent"]
+            content = r["content"]
+            segments.append(f"[{agent_name}]: {content}")
+        except Exception as e:
+            agent_name = r.get("agent", "unknown") if isinstance(r, dict) else "unknown"
+            error_msg = f"ERROR: {e}"
+            segments.append(f"[{agent_name}]: {error_msg}")
+            logger.warning(f"Error processing parallel result for agent '{agent_name}': {e}")
+
+    merged = "\n\n---\n\n".join(segments)
+    return Command(
+        update={"messages": [HumanMessage(content=merged, name="parallel_merge")]},
+        goto="supervisor",
     )
 
 
